@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Poznań: mapa transakcji kartowych</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --ink: #0f172a; --muted: #64748b; --line: #e2e8f0; --accent: #0f172a;
+    --card: rgba(255, 255, 255, .92); --shadow: 0 8px 30px rgba(15, 23, 42, .16);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; color: var(--ink); font-size: 14px; line-height: 1.4;
+               font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+  #map { position: fixed; inset: 0; }
+
+  /* pływające karty nad mapą */
+  .card { position: absolute; z-index: 1000; background: var(--card); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(15, 23, 42, .06); border-radius: 16px; box-shadow: var(--shadow); }
+  /* lewa kolumna: filtry u góry, pod nimi lista wydarzeń */
+  #left { position: absolute; top: 14px; left: 14px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-start;
+          gap: 12px; max-width: calc(100vw - 300px); }
+  #left .card { position: relative; }
+  #top { padding: 10px 16px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  #events-card { width: 360px; max-width: 100%; padding: 14px 16px; }
+  #top h1 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; margin: 0; }
+  .field { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+  #status { color: #b91c1c; font-size: 12px; }
+
+  #stats { top: 14px; right: 14px; width: 250px; padding: 14px 16px; }
+  #stats .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; margin-top: 10px; }
+  #stats .k:first-child { margin-top: 0; }
+  #total { font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
+  #top5 { margin: 4px 0 0; padding-left: 18px; font-variant-numeric: tabular-nums; }
+  #legend { height: 10px; margin-top: 14px; border-radius: 99px; }
+  .scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .chk { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  #stats .chk { margin-top: 12px; }
+  .foot { margin-top: 10px; color: var(--muted); font-size: 11px; }
+
+  #bottom { left: 14px; right: 64px; bottom: 14px; padding: 12px 16px; }
+  .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  #date { font-weight: 600; min-width: 190px; font-variant-numeric: tabular-nums; }
+  #day { flex: 1; min-width: 160px; }
+
+  /* kontrolki */
+  select { font: inherit; color: var(--ink); padding: 8px 32px 8px 12px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer;
+           appearance: none; -webkit-appearance: none; max-width: 100%;
+           background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 11px center; }
+  #cat { min-width: 280px; }
+  button { font: inherit; color: var(--ink); border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 8px 12px; cursor: pointer; transition: background .15s; }
+  button:hover { background: #f1f5f9; }
+  #play { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; padding: 8px 18px; }
+  #play:hover { background: #1e293b; }
+  input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+  input[type=range] { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 99px; background: var(--line); outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff;
+                                            border: 2px solid var(--accent); box-shadow: 0 1px 4px rgba(0, 0, 0, .25); cursor: pointer; }
+  input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid var(--accent); cursor: pointer; }
+  input[type=range]:disabled { opacity: .4; }
+
+  /* wydarzenia: każde w osobnym wierszu */
+  #events { height: min(320px, calc(100vh - 340px)); min-height: 120px; overflow-y: auto; scrollbar-gutter: stable; }
+  .ev-head { font-weight: 600; margin-bottom: 8px; }
+  .ev-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .ev-list li { display: flex; gap: 10px; align-items: baseline; }
+  .ev-date { flex: none; min-width: 84px; text-align: center; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 99px; background: #eef2ff; color: #3730a3; }
+  .ev-name { flex: 1; }
+  .ev-empty { color: var(--muted); }
+
+  .leaflet-control-zoom { border: none !important; box-shadow: var(--shadow) !important; border-radius: 12px !important; overflow: hidden; }
+  .leaflet-control-zoom a { color: var(--ink) !important; }
+
+  /* prawa kolumna: statystyki + karta wybranego osiedla */
+  #side { position: absolute; top: 14px; right: 14px; width: 270px; z-index: 1000; display: flex; flex-direction: column; gap: 12px;
+          max-height: calc(100vh - 300px); overflow-y: auto; }
+  #side .card { position: relative; top: auto; right: auto; width: auto; }
+  #osiedle { display: none; padding: 14px 16px; }
+  .os-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .os-name { font-weight: 700; font-size: 15px; letter-spacing: -.01em; }
+  .os-x { border: none; background: transparent; font-size: 20px; line-height: 1; padding: 0 4px; color: var(--muted); }
+  .os-x:hover { background: transparent; color: var(--ink); }
+  .os-sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .os-hint { color: var(--muted); }
+  .metric { margin-top: 14px; }
+  .m-k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+  .m-row { display: flex; align-items: center; gap: 10px; margin-top: 2px; flex-wrap: wrap; }
+  .m-v { font-size: 22px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .m-avg { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .badge { display: inline-flex; align-items: center; font-weight: 700; font-size: 13px; padding: 3px 10px; border-radius: 99px; font-variant-numeric: tabular-nums; }
+  .badge.up { background: #dcfce7; color: #15803d; }
+  .badge.down { background: #fee2e2; color: #b91c1c; }
+  .badge.flat { background: #f1f5f9; color: var(--muted); }
+
+  /* filtry: grupa analizy i pora dnia */
+  .filters { display: flex; gap: 20px; flex-basis: 100%; flex-wrap: wrap; align-items: center; }
+  .fgroup { display: flex; align-items: center; gap: 8px; }
+  .fl { color: var(--muted); font-size: 13px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { border-radius: 99px; padding: 5px 12px; font-size: 13px; color: var(--muted); }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; }
+  .seg-b { border: none; border-radius: 0; padding: 6px 12px; font-size: 13px; color: var(--muted); background: transparent; }
+  .seg-b.on { background: var(--accent); color: #fff; }
+
+  @media (max-width: 760px) {
+    #stats { display: none; }
+    #left { right: 14px; max-width: none; align-items: stretch; }
+    #events-card { width: auto; }
+    #cat { min-width: 0; width: 100%; }
+    #bottom { right: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="left">
+<div id="top" class="card">
+  <h1>Transakcje kartowe w Poznaniu</h1>
+  <label class="field"><span>Kategoria</span><select id="cat"></select></label>
+  <label class="field" id="os-field" style="display:none"><span>Osiedle</span><select id="os-sel"></select></label>
+  <span id="status"></span>
+  <div class="filters">
+    <div class="fgroup"><span class="fl">Grupa</span><div id="grp-chips" class="chips"></div></div>
+    <div class="fgroup"><span class="fl">Pora dnia</span><div id="band-seg" class="seg"></div></div>
+  </div>
+</div>
+<div id="events-card" class="card"><div id="events"></div></div>
+</div>
+
+<div id="side">
+<div id="osiedle" class="card"><div id="os-body"></div></div>
+<div id="stats" class="card">
+  <div class="k">Transakcje</div>
+  <div id="total"></div>
+  <div id="legend"></div>
+  <div class="scale"><span>mało</span><span>dużo</span></div>
+  <label class="chk"><input id="showpts" type="checkbox"> Pokaż punkty (kody)</label>
+  <div class="foot">Kolor: log10 liczby transakcji. Promień plamy: wielkość obszaru kodu.</div>
+</div>
+</div>
+
+<div id="bottom" class="card">
+  <div class="controls">
+    <button id="prev" title="Poprzedni miesiąc">◀</button>
+    <select id="month"></select>
+    <button id="next" title="Następny miesiąc">▶</button>
+    <span id="date"></span>
+    <input id="day" type="range" min="0" max="0" value="0">
+    <label class="chk"><input id="whole" type="checkbox" checked> Cały miesiąc (suma)</label>
+    <button id="play">▶ Play</button>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const DNI = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'];
+const fmt = n => n.toLocaleString('pl-PL');
+
+let META, DATA = null, timer = null, EVENTS = [];
+const CACHE = {};
+const months = [], dayMonth = [], monthStart = [], monthLen = [];
+const state = { m: 0, dd: 0, whole: true };   // domyślnie suma miesiąca = widok jak w mapie Folium
+
+// --- mapa ---
+const map = L.map('map', { zoomControl: false }).setView([52.41, 16.93], 11);
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+  { attribution: 'Tiles © Esri', maxZoom: 16 }).addTo(map);
+L.control.zoom({ position: 'bottomright' }).addTo(map);
+// --- własna warstwa heatmapy na canvasie (zamiast leaflet.heat, który rysował artefakty) ---
+// Każdy punkt (kod pocztowy) to radialny gradient o promieniu zależnym od powierzchni kodu:
+// promień w metrach jest przeliczany na piksele przy każdym zoomie. Najpierw rysujemy nieprzezroczystość
+// wszystkich punktów, a potem kolorujemy piksele wg tabeli kolorów (jak w heatmap.js).
+const MAX_RPX = 400;  // maksymalny zasięg plamy w pikselach
+const MIN_OP = 0.5;   // minimalna nieprzezroczystość plamy: im wyżej, tym mniej pusto/przezroczyście tam, gdzie transakcji jest mało
+const R_SCALE = 2;    // zasięg plamy = R_SCALE x promień koła o powierzchni kodu
+
+const hex2rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+
+const HeatCanvas = L.Layer.extend({
+  initialize: function () {
+    this._pts = [];
+    this._lut = new Uint8ClampedArray(256 * 3);
+    this.setColors('#ffd60a', '#f76707');
+  },
+
+  onAdd: function (map) {
+    this._map = map;
+    const pane = map.createPane('heatPane');          // między kafelkami (200) a warstwami wektorowymi (400)
+    pane.style.zIndex = 250;
+    pane.style.pointerEvents = 'none';
+    this._canvas = document.createElement('canvas');
+    this._canvas.style.position = 'absolute';
+    pane.appendChild(this._canvas);
+    this._off = document.createElement('canvas');
+    map.on('move zoom moveend zoomend resize', this.schedule, this);
+    this.schedule();
+  },
+
+  onRemove: function (map) {
+    map.off('move zoom moveend zoomend resize', this.schedule, this);
+    this._canvas.remove();
+  },
+
+  setPoints: function (pts) { this._pts = pts; this.schedule(); },   // [{lat, lon, w (0..1), r (metry)}]
+
+  setColors: function (c0, c1) {                       // c0 = mało transakcji, c1 = dużo
+    const a = hex2rgb(c0), b = hex2rgb(c1);
+    for (let i = 0; i < 256; i++) {
+      const t = Math.min(1, Math.max(0, (i / 255 - MIN_OP) / (1 - MIN_OP)));
+      for (let k = 0; k < 3; k++) this._lut[i * 3 + k] = Math.round(a[k] + (b[k] - a[k]) * t);
+    }
+    if (this._map) this.schedule();
+  },
+
+  schedule: function () {
+    if (this._raf || !this._map) return;
+    this._raf = requestAnimationFrame(() => { this._raf = 0; this.draw(); });
+  },
+
+  draw: function () {
+    const map = this._map, size = map.getSize(), W = size.x, H = size.y;
+    if (this._canvas.width !== W || this._canvas.height !== H) {
+      this._canvas.width = this._off.width = W;
+      this._canvas.height = this._off.height = H;
+    }
+    L.DomUtil.setPosition(this._canvas, map.containerPointToLayerPoint([0, 0]));   // canvas nad widocznym obszarem
+
+    const octx = this._off.getContext('2d', { willReadFrequently: true });
+    octx.clearRect(0, 0, W, H);
+    const mpp = 156543.03392 * Math.cos(map.getCenter().lat * Math.PI / 180) / Math.pow(2, map.getZoom());   // metry na piksel
+
+    for (const p of this._pts) {
+      const pt = map.latLngToContainerPoint([p.lat, p.lon]);
+      const R = Math.min(MAX_RPX, Math.max(12, R_SCALE * p.r / mpp));
+      if (pt.x < -R || pt.y < -R || pt.x > W + R || pt.y > H + R) continue;
+      const a = Math.min(1, Math.max(MIN_OP, p.w));
+      const g = octx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, R);
+      g.addColorStop(0, 'rgba(0,0,0,' + a + ')');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      octx.fillStyle = g;
+      octx.beginPath();
+      octx.arc(pt.x, pt.y, R, 0, 2 * Math.PI);
+      octx.fill();
+    }
+
+    const img = octx.getImageData(0, 0, W, H), d = img.data, lut = this._lut;
+    for (let i = 3; i < d.length; i += 4) {          // kolor wg nieprzezroczystości piksela, alfa zostaje
+      const al = d[i];
+      if (al) { const j = al * 3; d[i - 3] = lut[j]; d[i - 2] = lut[j + 1]; d[i - 1] = lut[j + 2]; }
+    }
+    this._canvas.getContext('2d').putImageData(img, 0, 0);
+  }
+});
+const heat = new HeatCanvas().addTo(map);
+
+// Kolor zależy od kategorii: para kolorów, od koloru dla małej liczby transakcji do koloru dla dużej.
+// Kategorie są ułożone wg liczby transakcji: cztery pierwsze dostają pary z listy poniżej, kolejne dalsze pary.
+const PAIRS = [
+  ['#ffb3a7', '#b71c1c'],   // 1. łososiowy -> ciemnoczerwony
+  ['#74c0fc', '#0b2a6f'],   // 2. błękitny -> granatowy
+  ['#b5d97a', '#00875a'],   // 3. pistacjowy -> szmaragdowy
+  ['#ff9ecb', '#c1121f'],   // 4. różowy -> czerwony
+  ['#96f2d7', '#0b7285'],   // 5. miętowy -> morski
+  ['#f3d9a4', '#7f4f24'],   // 6. beżowy -> brązowy
+  ['#f0abfc', '#86198f'],   // 7. liliowy -> magenta
+  ['#ced4da', '#343a40'],   // 8. jasnoszary -> grafitowy
+];
+const ALL_PAIR = ['#ffd60a', '#f76707'];   // "Wszystkie kategorie": żółty -> pomarańczowy
+
+function setColor(file) {
+  let cols = ALL_PAIR;
+  if (file !== 'all.json') {
+    const i = META.cats.findIndex(c => c.file === file);
+    cols = PAIRS[i % PAIRS.length];
+  }
+  heat.setColors(cols[0], cols[1]);      // najsłabsze plamy w pierwszym kolorze pary, najsilniejsze w drugim
+  $('legend').style.background = 'linear-gradient(to right, ' + cols.join(', ') + ')';
+}
+const ptsLayer = L.layerGroup().addTo(map);
+
+// --- dane ---
+async function loadData(file) {
+  if (!CACHE[file]) {
+    $('status').textContent = 'Ładowanie…';
+    const resp = await fetch('data/' + file);
+    if (!resp.ok) throw new Error('Nie można wczytać data/' + file);
+    const j = await resp.json();
+    const nDays = META.days.length, NC = META.codes.length;
+    const D = Int32Array.from(j.d), C = Int32Array.from(j.c), N = Int32Array.from(j.n);
+    const F = j.f ? Int8Array.from(j.f) : new Int8Array(D.length);   // filtr: grupa analizy * 2 + pora dnia (0..7)
+    const S = j.s ? Float64Array.from(j.s) : null;         // suma kwot transakcji (jeśli dane ją zawierają)
+
+    const offsets = new Int32Array(nDays + 1);          // wiersze są posortowane po dniu, potem po kodzie i filtrze
+    for (let i = 0; i < D.length; i++) offsets[D[i] + 1]++;
+    for (let i = 0; i < nDays; i++) offsets[i + 1] += offsets[i];
+
+    // sumy miesięczne w rozbiciu na kod i filtr: indeks (miesiąc * NC + kod) * 8 + filtr
+    const sums = new Float64Array(months.length * NC * 8);
+    for (let i = 0; i < D.length; i++) sums[(dayMonth[D[i]] * NC + C[i]) * 8 + F[i]] += N[i];
+
+    let ssums = null;                                    // to samo dla sum kwot
+    if (S) {
+      ssums = new Float64Array(months.length * NC * 8);
+      for (let i = 0; i < D.length; i++) ssums[(dayMonth[D[i]] * NC + C[i]) * 8 + F[i]] += S[i];
+    }
+
+    CACHE[file] = { D, C, F, N, S, offsets, sums, ssums, mx: {} };
+    $('status').textContent = '';
+  }
+  DATA = CACHE[file];
+}
+
+// --- filtry: grupa analizy (kolumny lau_enr / issr_ctry_cd) i pora dnia (godzina z tran_id_gmt_tm, UTC) ---
+// filtr f = grupa * 2 + pora; fmask[f] = 1, jeśli dany filtr jest włączony
+const fmask = new Uint8Array(8).fill(1);
+state.groups = [true, true, true, true];
+state.band = 'all';                               // 'all' | 0 (dzień 8-17) | 1 (wieczór/noc 18-7)
+
+function updateMask() {
+  for (let f = 0; f < 8; f++) {
+    const g = f >> 1, b = f & 1;
+    fmask[f] = state.groups[g] && (state.band === 'all' || state.band === b) ? 1 : 0;
+  }
+}
+
+// liczba transakcji i suma kwot dla każdego kodu w wyświetlanym okresie (dzień lub cały miesiąc) przy aktywnych filtrach
+function periodTotals() {
+  const NC = META.codes.length, cn = new Float64Array(NC), cs = new Float64Array(NC);
+  if (state.whole) {
+    const base = state.m * NC * 8;
+    for (let c = 0; c < NC; c++) {
+      for (let f = 0; f < 8; f++) {
+        if (!fmask[f]) continue;
+        const k = base + c * 8 + f;
+        cn[c] += DATA.sums[k];
+        if (DATA.ssums) cs[c] += DATA.ssums[k];
+      }
+    }
+  } else {
+    const di = monthStart[state.m] + state.dd;
+    for (let i = DATA.offsets[di]; i < DATA.offsets[di + 1]; i++) {
+      if (!fmask[DATA.F[i]]) continue;
+      cn[DATA.C[i]] += DATA.N[i];
+      if (DATA.S) cs[DATA.C[i]] += DATA.S[i];
+    }
+  }
+  return { cn, cs };
+}
+
+// maksymalne wartości do skali kolorów (dzień / miesiąc) przy aktywnych filtrach; liczone raz i zapamiętywane
+function maxes() {
+  const key = Array.from(fmask).join('');
+  if (DATA.mx[key]) return DATA.mx[key];
+  const n = DATA.D.length, NC = META.codes.length;
+  let maxDay = 1, i = 0;
+  while (i < n) {                                  // wiersze tego samego dnia i kodu są obok siebie (różnią się filtrem)
+    const d = DATA.D[i], c = DATA.C[i];
+    let v = 0;
+    while (i < n && DATA.D[i] === d && DATA.C[i] === c) { if (fmask[DATA.F[i]]) v += DATA.N[i]; i++; }
+    if (v > maxDay) maxDay = v;
+  }
+  let maxMonth = 1;
+  for (let m = 0; m < months.length; m++) {
+    for (let c = 0; c < NC; c++) {
+      let v = 0;
+      for (let f = 0; f < 8; f++) if (fmask[f]) v += DATA.sums[(m * NC + c) * 8 + f];
+      if (v > maxMonth) maxMonth = v;
+    }
+  }
+  return (DATA.mx[key] = { maxDay, maxMonth });
+}
+
+// --- rysowanie klatki ---
+function render() {
+  const NC = META.codes.length;
+  const pts = [];          // [indeks kodu, liczba]
+  let total = 0, max, label, rFrom, rTo;
+
+  const { cn } = periodTotals();
+  for (let c = 0; c < NC; c++) if (cn[c] > 0) { pts.push([c, cn[c]]); total += cn[c]; }
+  const mx = maxes();
+
+  if (state.whole) {
+    label = months[state.m] + ' (cały miesiąc)';
+    rFrom = months[state.m] + '-01';
+    rTo = months[state.m] + '-31';
+    max = mx.maxMonth;
+  } else {
+    const di = monthStart[state.m] + state.dd;
+    const date = META.days[di];
+    label = date + ' (' + DNI[new Date(date + 'T12:00:00').getDay()] + ')';
+    rFrom = rTo = date;
+    max = mx.maxDay;
+  }
+
+  const lm = Math.log10(max + 1);
+  heat.setPoints(pts.map(([c, v]) => ({
+    lat: META.codes[c].lat, lon: META.codes[c].lon, r: META.codes[c].r || 500, w: Math.log10(v + 1) / lm
+  })));
+
+  ptsLayer.clearLayers();
+  if ($('showpts').checked) {
+    pts.forEach(([c, v]) => L.circleMarker([META.codes[c].lat, META.codes[c].lon], { radius: 4, weight: 1 })
+      .bindTooltip(META.codes[c].k + ': ' + fmt(v)).addTo(ptsLayer));
+  }
+
+  $('date').textContent = label;
+  $('total').textContent = fmt(total);
+  renderEvents(rFrom, rTo);
+  renderOsiedle(label);
+}
+
+// wydarzenia z docs/data/events.json: [data_od, data_do, nazwa]; pokazujemy te, które trwają w wyświetlanym dniu (lub miesiącu)
+function renderEvents(from, to) {
+  const box = $('events');
+  const list = EVENTS.filter(e => e[0] <= to && e[1] >= from);
+  const dm = d => d.slice(8, 10) + '.' + d.slice(5, 7);
+  box.textContent = '';
+  const h = document.createElement('div');
+  h.className = 'ev-head';
+  h.textContent = from === to ? 'Wydarzenia w Poznaniu, ' + from : 'Wydarzenia w Poznaniu w miesiącu ' + from.slice(0, 7);
+  box.appendChild(h);
+  if (!list.length) {
+    const p = document.createElement('div');
+    p.className = 'ev-empty';
+    p.textContent = 'Brak dużych wydarzeń w bazie';
+    box.appendChild(p);
+    return;
+  }
+  const ul = document.createElement('ul');       // każde wydarzenie w osobnym wierszu
+  ul.className = 'ev-list';
+  list.forEach(e => {
+    const li = document.createElement('li');
+    const d = document.createElement('span');
+    d.className = 'ev-date';
+    d.textContent = e[0] === e[1] ? dm(e[0]) : dm(e[0]) + '–' + dm(e[1]);
+    const n = document.createElement('span');
+    n.className = 'ev-name';
+    n.textContent = e[2];
+    li.appendChild(d);
+    li.appendChild(n);
+    ul.appendChild(li);
+  });
+  box.appendChild(ul);
+}
+
+// --- osiedla: rysowanie na mapie, wybór (klik lub lista) i porównanie ze średnią ---
+// Transakcje osiedla = suma po kodach pocztowych, każdy kod ważony udziałem swojej powierzchni w osiedlu
+// (docs/data/osiedla_w.json). To przybliżenie: zakładamy równomierny rozkład transakcji w obrębie kodu.
+let OS = null;           // { layers: [], names: [], W: [[[indeks kodu, waga], ...], ...] }
+let selOs = -1;
+let osLabel = '';
+const OS_STYLE = { color: '#475569', weight: 1, fillColor: '#64748b', fillOpacity: 0.03 };
+const OS_SEL = { color: '#0f172a', weight: 3, fillColor: '#0f172a', fillOpacity: 0.1 };
+
+const el = (tag, cls, text) => {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+
+async function loadOsiedla() {
+  try {
+    const [g, w] = await Promise.all([fetch('data/osiedla.geojson'), fetch('data/osiedla_w.json')]);
+    if (!g.ok || !w.ok) return;                       // osiedla są opcjonalne
+    const geo = await g.json(), W = await w.json();
+    OS = { layers: [], names: [], W };
+    L.geoJSON(geo, {
+      style: OS_STYLE,
+      onEachFeature: (f, layer) => {
+        const i = f.properties.i;
+        OS.layers[i] = layer;
+        OS.names[i] = f.properties.name;
+        layer.bindTooltip(f.properties.name, { sticky: true });
+        layer.on('click', () => selectOsiedle(selOs === i ? -1 : i, false));   // ponowny klik odznacza
+      }
+    }).addTo(map);
+
+    const sel = $('os-sel');
+    sel.textContent = '';
+    sel.appendChild(new Option('(wybierz osiedle)', '-1'));
+    OS.names.map((n, i) => ({ n, i })).sort((a, b) => a.n.localeCompare(b.n, 'pl'))
+      .forEach(o => sel.appendChild(new Option(o.n, String(o.i))));
+    $('os-field').style.display = '';
+    $('osiedle').style.display = 'block';
+  } catch (e) { /* bez osiedli aplikacja działa jak wcześniej */ }
+}
+
+function selectOsiedle(i, fit) {
+  if (!OS) return;
+  selOs = i;
+  OS.layers.forEach((l, k) => l.setStyle(k === i ? OS_SEL : OS_STYLE));
+  if (i >= 0) {
+    OS.layers[i].bringToFront();
+    if (fit) map.fitBounds(OS.layers[i].getBounds(), { maxZoom: 14, padding: [60, 60] });
+  }
+  $('os-sel').value = String(i);
+  renderOsiedle();
+}
+
+// plakietka: więcej niż średnia = zielona z plusem, mniej = czerwona z minusem
+function badge(pct) {
+  if (!isFinite(pct)) return el('span', 'badge flat', 'brak danych');
+  const up = pct >= 0;
+  return el('span', 'badge ' + (up ? 'up' : 'down'),
+    (up ? '+ ' : '− ') + Math.abs(pct).toLocaleString('pl-PL', { maximumFractionDigits: 1 }) + '%');
+}
+
+function metric(label, value, pct, avgText) {
+  const box = el('div', 'metric');
+  box.appendChild(el('div', 'm-k', label));
+  const row = el('div', 'm-row');
+  row.appendChild(el('span', 'm-v', value));
+  row.appendChild(badge(pct));
+  box.appendChild(row);
+  box.appendChild(el('div', 'm-avg', avgText));
+  return box;
+}
+
+function renderOsiedle(label) {
+  if (label !== undefined) osLabel = label;
+  if (!OS || !DATA) return;
+  const body = $('os-body');
+  body.textContent = '';
+  if (selOs < 0) {
+    body.appendChild(el('div', 'os-hint', 'Kliknij osiedle na mapie albo wybierz je z listy u góry.'));
+    return;
+  }
+
+  // transakcje i kwoty po kodach pocztowych w wyświetlanym okresie (dzień lub cały miesiąc) przy aktywnych filtrach
+  const { cn, cs } = periodTotals();
+  const NC = cn.length;
+  let totN = 0, totS = 0;
+  for (let c = 0; c < NC; c++) { totN += cn[c]; totS += cs[c]; }
+
+  // przeliczenie na osiedla
+  const nOs = OS.W.length, Nos = new Float64Array(nOs), Sos = new Float64Array(nOs);
+  for (let o = 0; o < nOs; o++) for (const [c, w] of OS.W[o]) { Nos[o] += cn[c] * w; Sos[o] += cs[c] * w; }
+  let sumN = 0;
+  for (let o = 0; o < nOs; o++) sumN += Nos[o];
+  const meanN = sumN / nOs;                            // średnia liczba transakcji na osiedle
+  const N = Nos[selOs], S = Sos[selOs];
+
+  const file = $('cat').value;
+  const catName = file === 'all.json' ? 'Wszystkie kategorie' : META.cats.find(c => c.file === file).name;
+
+  const head = el('div', 'os-head');
+  head.appendChild(el('div', 'os-name', OS.names[selOs]));
+  const x = el('button', 'os-x', '×');
+  x.title = 'Odznacz osiedle';
+  x.onclick = () => selectOsiedle(-1, false);
+  head.appendChild(x);
+  body.appendChild(head);
+  body.appendChild(el('div', 'os-sub', catName + ' · ' + osLabel));
+
+  const money = v => v.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  body.appendChild(metric('Liczba transakcji', fmt(Math.round(N)), (N - meanN) / meanN * 100,
+    'Średnia na osiedle: ' + fmt(Math.round(meanN))));
+
+  if (DATA.S) {
+    const avgOs = N > 0 ? S / N : NaN, avgAll = totN > 0 ? totS / totN : NaN;
+    body.appendChild(metric('Średnia kwota transakcji', isFinite(avgOs) ? money(avgOs) : '—', (avgOs - avgAll) / avgAll * 100,
+      'Średnia ze wszystkich transakcji: ' + (isFinite(avgAll) ? money(avgAll) : '—')));
+  }
+}
+
+// przyciski grup (można włączać kilka naraz) i przełącznik pory dnia
+function buildFilters() {
+  const GN = META.grupy || ['Poznań', 'Obwarzanek (okolice)', 'Obcokrajowcy', 'Poza metropolią'];
+  const PN = META.pory || ['Dzień (8–17)', 'Wieczór/noc (18–7)'];
+  const TIPS = ['Karta z Poznania (gmina karty: Poznań)', 'Karta z gmin wokół Poznania (obwarzanek)',
+                'Karta wydana poza Polską', 'Karta z pozostałej części Polski'];
+
+  const chips = $('grp-chips');
+  chips.textContent = '';
+  GN.forEach((name, g) => {
+    const b = el('button', 'chip on', name);
+    b.title = TIPS[g] || '';
+    b.onclick = () => {
+      state.groups[g] = !state.groups[g];
+      if (!state.groups.some(Boolean)) state.groups[g] = true;          // zawsze co najmniej jedna grupa
+      chips.querySelectorAll('.chip').forEach((x, i) => x.classList.toggle('on', state.groups[i]));
+      updateMask();
+      render();
+    };
+    chips.appendChild(b);
+  });
+
+  const seg = $('band-seg');
+  seg.textContent = '';
+  [['Wszystkie', 'all'], [PN[0], 0], [PN[1], 1]].forEach(([name, val]) => {
+    const b = el('button', 'seg-b' + (val === 'all' ? ' on' : ''), name);
+    b.onclick = () => {
+      state.band = val;
+      seg.querySelectorAll('.seg-b').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+      updateMask();
+      render();
+    };
+    seg.appendChild(b);
+  });
+}
+
+function syncUI() {
+  $('month').value = state.m;
+  $('day').max = monthLen[state.m] - 1;
+  $('day').value = state.dd;
+  $('day').disabled = state.whole;
+}
+
+function go(m, dd) {
+  state.m = ((m % months.length) + months.length) % months.length;
+  state.dd = Math.min(dd, monthLen[state.m] - 1);
+  syncUI();
+  render();
+}
+
+function step() {
+  if (state.whole) return go(state.m + 1, 0);
+  if (state.dd + 1 >= monthLen[state.m]) return go(state.m + 1, 0);
+  go(state.m, state.dd + 1);
+}
+
+// --- start ---
+async function init() {
+  const resp = await fetch('data/meta.json');
+  if (!resp.ok) throw new Error('Brak data/meta.json (uruchom export_data.py)');
+  META = await resp.json();
+  try { const er = await fetch('data/events.json'); if (er.ok) EVENTS = await er.json(); } catch (e) { /* wydarzenia są opcjonalne */ }
+
+  META.days.forEach((d, i) => {
+    const ym = d.slice(0, 7);
+    if (!months.length || months[months.length - 1] !== ym) { months.push(ym); monthStart.push(i); monthLen.push(0); }
+    dayMonth.push(months.length - 1);
+    monthLen[months.length - 1]++;
+  });
+
+  $('month').innerHTML = months.map((m, i) => '<option value="' + i + '">' + m + '</option>').join('');
+  $('cat').innerHTML = '<option value="all.json">Wszystkie kategorie (' + fmt(META.total) + ')</option>' +
+    META.cats.map(c => '<option value="' + c.file + '">' + c.name + ' (' + fmt(c.n) + ')</option>').join('');
+
+  buildFilters();
+  await loadOsiedla();
+  await loadData('all.json');
+  setColor('all.json');
+  go(0, 0);
+}
+
+$('cat').onchange = async e => { try { await loadData(e.target.value); setColor(e.target.value); render(); } catch (err) { $('status').textContent = err.message; } };
+$('os-sel').onchange = e => selectOsiedle(+e.target.value, true);
+$('month').onchange = e => go(+e.target.value, 0);
+$('prev').onclick = () => go(state.m - 1, 0);
+$('next').onclick = () => go(state.m + 1, 0);
+$('day').oninput = e => { state.dd = +e.target.value; render(); };
+$('whole').onchange = e => { state.whole = e.target.checked; syncUI(); render(); };
+$('showpts').onchange = render;
+$('play').onclick = () => {
+  if (timer) { clearInterval(timer); timer = null; $('play').textContent = '▶ Play'; return; }
+  $('play').textContent = '⏸ Pause';
+  timer = setInterval(step, 500);
+};
+
+init().catch(err => {
+  $('status').textContent = err.message + ' | Jeśli otwierasz plik z dysku, uruchom: python -m http.server w folderze docs';
+});
+</script>
+</body>
+</html>
