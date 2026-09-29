@@ -27,6 +27,7 @@ import duckdb
 import pandas as pd
 
 from kategorie_glowne import GLOWNE, INNE, case_sql      # agregacja kategorii (przepisana z zapytania SQL)
+from transaction_groups import GRUPY, group_sql
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "docs" / "data"
@@ -37,11 +38,6 @@ KOD_PREFIKSY = None           # None = wszystkie kody z GeoJSON (jak w mapie Fol
 KATEGORIE = "glowne"          # "glowne" = kategorie zagregowane (kategorie_glowne.py), "szczegolowe" = surowe mrch_catg_nm
 TOP_KAT = 40                  # tylko dla "szczegolowe": tyle kategorii osobno; reszta trafia do "(pozostałe)"
 
-# grupa analizy (wg zapytania SQL): indeks g = 0..3, ustalany z kraju wydawcy karty (issr_ctry_cd) i gminy karty (lau_enr)
-GRUPY = ["Poznań", "Obwarzanek (okolice)", "Obcokrajowcy", "Poza metropolią"]
-OBWARZANEK = ("BUK", "CZERWONAK", "DOPIEWO", "KLESZCZEWO", "KOMORNIKI", "KORNIK", "KOSTRZYN", "LUBON", "MOSINA",
-              "MUROWANA GOSLINA", "POBIEDZISKA", "PUSZCZYKOWO", "ROKIETNICA", "STESZEW", "SUCHY LAS", "SWARZEDZ",
-              "TARNOWO PODGORNE")
 # pora dnia (wg zapytania SQL, godzina z tran_id_gmt_tm, czas GMT/UTC): indeks b = 0..1
 PORY = ["Dzień (8–17)", "Wieczór/noc (18–7)"]
 MIN_N = 1                     # ukryj komórki (dzień x kod x kategoria) z mniejszą liczbą transakcji (prywatność)
@@ -93,8 +89,8 @@ con.sql(f"SET memory_limit='{MEM}'")
 con.sql("SET preserve_insertion_order=false")
 con.sql("SET enable_progress_bar=true")
 
-obw_sql = ", ".join("'" + n + "'" for n in OBWARZANEK)
 kat_sql = case_sql("catg_u") if KATEGORIE == "glowne" else "COALESCE(NULLIF(trim(mrch_catg_nm), ''), '(brak kategorii)')"
+grupa_sql = group_sql("issr_ctry_cd", "lau_u")
 
 df = con.sql(f"""
 WITH p AS (
@@ -113,10 +109,7 @@ q AS (
   SELECT dt,
          substr(k, 1, 2) || '-' || substr(k, 3, 3) AS kod,
          {kat_sql} AS kat,
-         CASE WHEN issr_ctry_cd <> 616 THEN 2
-              WHEN lau_u = 'POZNAN' THEN 0
-              WHEN lau_u IN ({obw_sql}) THEN 1
-              ELSE 3 END AS g,
+            {grupa_sql} AS g,
          CASE WHEN hh BETWEEN 8 AND 17 THEN 0 ELSE 1 END AS b,
          amt
   FROM p

@@ -21,6 +21,17 @@ Skrypt szuka `poznan_dataset_mini.parquet` (np. w `..\poznan\`) i `kody.json`. I
 `KOD_PREFIKSY`, `TOP_KAT` (ile kategorii osobno), `MIN_N` (minimalna liczba transakcji w komórce).
 Wynik: `docs/data/*.json` (na końcu skrypt wypisuje łączny rozmiar).
 
+Brak kodu gminy karty (`lau_enr`) jest klasyfikowany osobno jako **Brak danych gminy**, a nie jako „Poza metropolią”.
+
+## Testy klasyfikacji danych
+Uruchom z katalogu projektu w środowisku z DuckDB:
+
+```
+python -m unittest discover -s tests -v
+```
+
+Testy sprawdzają przypisanie Poznania, obwarzanka, kart zagranicznych i pozostałych gmin oraz obsługę pustego kodu gminy.
+
 ## 2. Sprawdź lokalnie
 `fetch` nie działa przy otwarciu pliku z dysku, więc uruchom serwer:
 
