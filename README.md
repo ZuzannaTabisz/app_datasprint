@@ -1,4 +1,5 @@
 # Mapa transakcji kartowych w Poznaniu
+## English below :)
 
 Interaktywna mapa (strona statyczna, działa na GitHub Pages), która pokazuje, **ile i gdzie w Poznaniu zostawiają pieniędzy różne grupy osób**: mieszkańcy Poznania, mieszkańcy obwarzanka, obcokrajowcy i osoby spoza metropolii. Dane pochodzą z syntetycznych, zanonimizowanych transakcji kartowych (hackathon DataSprint, Visa; kwoty w fikcyjnej walucie).
 
@@ -123,6 +124,136 @@ python -m http.server 8000
 i otwórz http://localhost:8000
 
 ### 3. Strona opublikuowana na GitHub Pages
+```
+https://zuzannatabisz.github.io/app_datasprint/index.html
+```
+
+
+# Card Transactions Map of Poznań
+
+An interactive map (static site, hosted on GitHub Pages) showing **how much money different groups of people leave in Poznań, and where**: Poznań residents, residents of the "obwarzanek" (the ring of municipalities around Poznań), foreigners, and people from outside the metropolitan area. The data comes from synthetic, anonymized card transactions (DataSprint hackathon, Visa; amounts are in a fictional currency).
+
+Website: https://zuzannatabisz.github.io/app_datasprint/
+
+> [!TIP]
+> ## 👉 [OPEN THE APP](https://zuzannatabisz.github.io/app_datasprint/)
+> **Press ▶ Play** and watch how the data changes over time.
+> **Select a district** and see how much money flows into that area.
+
+## What the app can do
+- **A headline banner** with the amount spent within Poznań.
+- **A postal-code heatmap** drawn by **total amount** (default) or **number of transactions**. The size of each blob depends on the area of the postal code, and the color depends on the category (light = low, dark = high).
+- **Filters:** category (aggregated categories), district, group (multi-select; double-click = only that group), time of day (day 8–17 / evening–night 18–7).
+- **Timeline:** per month / per day switch, arrows, day slider, Play.
+- **Districts:** 42 districts, selectable by clicking on the map or from a list. The card shows the number of transactions and the average transaction amount compared with the average (green "+", red "−").
+- **Events in Poznań** with the amount of "additional spending above a regular day" for the selected filters.
+- Transaction counts below 30 are shown as "<30" to comply with the requirements.
+
+## Stack
+| Layer | Technologies |
+|---|---|
+| Source data | Parquet, column dictionary in Excel (data provided by the organizers) |
+| Processing | **Python 3.12**, **DuckDB** (aggregation without loading the file into RAM), **pandas**, **numpy**, **shapely** (converting postal codes to districts), `gzip`/`struct` (binary format) |
+| Environment | conda (`datasprint`) |
+| Geographic data | GeoJSON: postal codes (`kody.json`), districts (`osiedla.json`) |
+| Frontend | HTML + CSS + JavaScript without a framework, **Leaflet 1.9.4**, custom `canvas` heatmap renderer, **Esri World Light Gray** tiles |
+| Data format on the site | monthly `.bin` files (gzip, typed arrays) or `.json` (fallback) |
+| Hosting | **GitHub Pages** (`docs/` folder) |
+
+The browser does not receive raw records, only aggregates. A modern browser is required (Chrome/Edge 80+, Firefox 126+, Safari 16.4+: `DecompressionStream`, CSS `zoom`).
+
+## Pipeline
+### 1. Data preparation (offline)
+```mermaid
+flowchart TD
+    B["poznan_dataset.py<br/>filter: POS, cp_flag = 1,<br/>fua_enr = POZNAN or city contains POZNAN"]
+    C[("poznan_dataset.parquet (full)<br/>poznan_dataset_mini.parquet (12.97 M)")]
+    D["export_data.py<br/>DuckDB: aggregation day × postal code × category<br/>× analysis group × time of day"]
+    K["kategorie_glowne.py<br/>merchant category mapping"]
+    G1["kody.json<br/>postal codes GeoJSON"]
+    G2["osiedla.json<br/>districts GeoJSON"]
+    E1["duze_wydarzenia*.csv<br/>list of events"]
+    S["shapely<br/>share of each postal code in each district"]
+    O[("docs/data/<br/>meta.json (codes, categories, color scales)<br/>m/*.bin (monthly data)<br/>osiedla.geojson, osiedla_w.json<br/>events.json")]
+    P["GitHub Pages<br/>(docs/ folder)"]
+
+    B --> C --> D
+    K --> D
+    G1 --> D
+    G2 --> S --> D
+    E1 --> D
+    D --> O --> P
+```
+
+### 2. How it works in the browser
+```mermaid
+flowchart LR
+    U["User:<br/>category, month/day,<br/>group, time of day, district"]
+    M["meta.json<br/>(codes, categories, scales)"]
+    F["Monthly file<br/>m/&lt;category&gt;_&lt;YYYY-MM&gt;.bin<br/>(gzip → typed arrays)"]
+    A["Aggregation in JS:<br/>group and time-of-day filter<br/>amount or count per code"]
+    H["Heatmap (canvas):<br/>a blob per code, radius from area,<br/>color by category"]
+    W["Banner, top category,<br/>district card, events"]
+
+    U --> F
+    M --> A
+    F --> A --> H
+    A --> W
+```
+The site loads only the selected month (and, in the background, the other categories of that month in order to compute the top category). The color scale is shared across all months thanks to the maximum values computed in `export_data.py`.
+
+## Columns used by the export
+| Column | Usage |
+|---|---|
+| `mrch_ctry_nm` | filter: `POLAND` only |
+| `mrch_postal_code` | **heatmap area** (merchant postal code, normalized to `XX-XXX`) |
+| `prch_dt` | day |
+| `mrch_catg_nm` | category (aggregated into main categories) |
+| `tran_id_gmt_tm` | UTC hour → time of day |
+| `issr_ctry_cd` | `<> 616` = foreigners |
+| `lau_enr` | group: Poznań, obwarzanek (list of 17 municipalities), outside the metropolitan area |
+| `cs_tran_amt` | amounts (total and average) |
+
+The district card and the heatmap use the **merchant's** postal code (where the payment was made), not the cardholder's place of residence.
+
+## Definitions and assumptions
+- **Analysis group:** issuer country ≠ Poland → Foreigners; `lau_enr` = `POZNAN` → Poznań; `lau_enr` from the list of municipalities around Poznań → Obwarzanek; everything else → Outside the metropolitan area.
+- **Time of day:** hours from `tran_id_gmt_tm` (UTC): 8–17 day, 18–7 evening/night.
+- **"In Poznań":** postal codes converted to districts using weights from `osiedla_w.json` (the share of the postal code's area within the district), assuming an even distribution of transactions within a postal code. This is an approximation.
+- **Additional event spending:** the amount on the event days minus the number of days × the average daily amount from the days of the same month without any event. This is a simple estimate that does not account for the day of the week or public holidays, and it does not prove causation.
+- **The top category** is calculated across all categories, regardless of the selected category.
+
+## Compliance (regulatory requirements of the challenge)
+Requirements from the challenge description: (1) no possibility of identifying individuals, i.e. analyses and presentations only for groups of **at least 30 cards**; (2) each comparison group includes **at least 3 entities/players**, and no single one of them exceeds **75%** of the group. The solution must not allow identification of individual users, cards, transactions or entities.
+
+### Compliance measures
+- **Aggregates only.** Only sums and counts for cells of *day × postal code × category × analysis group × time of day* are published on the site. We do not publish card numbers (`pymt_crd_acct_num_raw` is not used in the export), merchant names (`mrch_nm_raw`), individual transactions, or times down to the minute. The browser does not receive raw records.
+- **Results for groups, not for individuals.** The presented units are postal codes, districts, categories and groups (Poznań, obwarzanek, foreigners, outside the metropolitan area), not users.
+- **Masking of small numbers in the interface.** A transaction count below 30 is shown as "<30" (statistics panel, code points, district card, category list).
+- **The `MIN_N` parameter** in `export_data.py` allows removing cells with a smaller number of transactions from the published files.
+
+## Running the project
+The input files are located in the main folder (they are not committed to the repository: `*.parquet` is in `.gitignore`):
+`poznan_dataset_mini.parquet`, `poznan_dataset.parquet`, `kody.json`, `osiedla.json`, `duze_wydarzenia*.csv`.
+
+### 1. Generate the data
+```
+conda activate datasprint
+conda install -y -c conda-forge shapely
+cd app
+python export_data.py --dataset mini
+```
+`--dataset full` uses the full dataset, `--parquet PATH` any other file. Settings at the top of `export_data.py`: `DATASET`, `KOD_PREFIKSY`, `KATEGORIE` (`glowne` or `szczegolowe`), `FORMAT` (`bin` or `json`), `MIN_N`. The script prints the size of the output and of the largest monthly file.
+
+### 2. Check locally
+Start a server:
+```
+cd docs
+python -m http.server 8000
+```
+and open http://localhost:8000
+
+### 3. The site published on GitHub Pages
 ```
 https://zuzannatabisz.github.io/app_datasprint/index.html
 ```
