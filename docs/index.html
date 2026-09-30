@@ -24,16 +24,22 @@
   #left { position: absolute; top: 14px; left: 14px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-start;
           gap: 12px; max-width: calc(100vw - 300px); }
   #left .card { position: relative; }
-  #top { padding: 10px 16px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
-  #events-card { width: 360px; max-width: 100%; padding: 14px 16px; }
+  /* kontenery kolumn są niewidoczne i zajmują też puste miejsce obok węższych kart: nie mogą przechwytywać myszy,
+     bo blokowałyby przeciąganie mapy i pokazywały strzałkę zamiast łapki; reagują tylko same karty */
+  #left, #side { pointer-events: none; }
+  #left .card, #side .card { pointer-events: auto; }
+  /* karta filtrów i baner mają szerokość swojej zawartości (a nie całego ekranu) i są tak samo szerokie względem siebie */
+  #top { align-self: stretch; padding: 12px 18px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+  .top-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  #events-card { width: 440px; max-width: 100%; padding: 18px 20px; }
   #top h1 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; margin: 0; }
   .field { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
   #status { color: #b91c1c; font-size: 12px; }
 
   #stats { top: 14px; right: 14px; width: 250px; padding: 14px 16px; }
-  #stats .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; margin-top: 10px; }
+  #stats .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; margin-top: 12px; }
   #stats .k:first-child { margin-top: 0; }
-  #total { font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
+  #total { font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
   #top5 { margin: 4px 0 0; padding-left: 18px; font-variant-numeric: tabular-nums; }
   #legend { height: 10px; margin-top: 14px; border-radius: 99px; }
   .scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 3px; }
@@ -63,24 +69,54 @@
   input[type=range]:disabled { opacity: .4; }
 
   /* wydarzenia: każde w osobnym wierszu */
-  #events { height: min(320px, calc(100vh - 340px)); min-height: 120px; overflow-y: auto; scrollbar-gutter: stable; }
-  .ev-head { font-weight: 600; margin-bottom: 8px; }
-  .ev-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-  .ev-list li { display: flex; gap: 10px; align-items: baseline; }
+  /* wysokość dopasowuje się do liczby wydarzeń; przy większej liczbie (lub małym ekranie) lista się przewija */
+  #events { max-height: max(220px, min(560px, calc(100vh - 400px))); overflow-x: hidden; overflow-y: auto; scrollbar-gutter: stable; }
+  .ev-head { font-weight: 600; }
+  .ev-sub { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .ev-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .ev-list li { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
   .ev-date { flex: none; min-width: 84px; text-align: center; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 99px; background: #eef2ff; color: #3730a3; }
-  .ev-name { flex: 1; }
+  .ev-name { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 15px; }
+  .ev-amt { flex: none; font-weight: 700; font-size: 16.2px; padding: 5px 12px; border-radius: 10px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .ev-amt.up { background: #dcfce7; color: #15803d; }
+  .ev-amt.down { background: #fee2e2; color: #b91c1c; }
+  .ev-amt.flat { background: #f1f5f9; color: var(--muted); }
   .ev-empty { color: var(--muted); }
+
+  /* nagłówek: ile zostawiła wybrana grupa w Poznaniu */
+  /* baner z kwotą: główny punkt całej strony, tak samo szeroki jak karta z filtrami */
+  #headline { align-self: stretch; padding: 22px 30px; display: grid; grid-template-columns: auto auto; justify-content: start; gap: 56px; align-items: center;
+              background: linear-gradient(100deg, #ecfdf3 0%, rgba(255, 255, 255, .95) 55%); border: 1px solid #bbf7d0; }
+  .hl-line { display: flex; align-items: baseline; gap: 22px; flex-wrap: wrap; }      /* zdanie w jednej linii: "Wszyscy zostawili w Poznaniu + 210 mln" */
+  #hl-title { color: #0f172a; font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
+  #hl-amount { font-size: 76px; font-weight: 800; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; color: #15803d;
+               text-shadow: 0 2px 18px rgba(21, 128, 61, .18); }
+  .hl-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .hl-tag { font-size: 13px; font-weight: 500; padding: 4px 12px; border-radius: 99px; background: rgba(15, 23, 42, .06); color: #334155; }
+  .hl-side { min-width: 400px; max-width: 480px; padding: 18px 22px; border-radius: 18px; background: #fff; border: 2px solid #86efac;
+             box-shadow: 0 6px 22px rgba(21, 128, 61, .16); }
+  .hl-k { color: #15803d; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; }
+  .hl-top { display: flex; align-items: center; gap: 16px; }
+  .hl-ico { flex: none; width: 60px; height: 60px; border-radius: 16px; background: #dcfce7; display: grid; place-items: center; font-size: 32px; line-height: 1; }
+  #hl-topname { font-size: 17px; font-weight: 700; color: #0f172a; line-height: 1.25; }
+  #hl-topamt { font-size: 32px; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; color: #15803d; line-height: 1.1; }
+  .hl-bar { height: 8px; border-radius: 99px; background: #e2e8f0; margin-top: 12px; overflow: hidden; }
+  #hl-barfill { height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, #4ade80, #15803d); transition: width .25s; }
+  .hl-share { color: var(--muted); font-size: 12px; margin-top: 5px; }
 
   .leaflet-control-zoom { border: none !important; box-shadow: var(--shadow) !important; border-radius: 12px !important; overflow: hidden; }
   .leaflet-control-zoom a { color: var(--ink) !important; }
+  /* podpis z nazwą osiedla przy kursorze */
+  .os-hover { position: absolute; display: none; z-index: 1200; pointer-events: none; padding: 4px 10px; border-radius: 8px; font-size: 12px;
+              font-weight: 600; color: #fff; background: rgba(15, 23, 42, .9); white-space: nowrap; }
 
   /* prawa kolumna: statystyki + karta wybranego osiedla */
-  #side { position: absolute; top: 14px; right: 14px; width: 270px; z-index: 1000; display: flex; flex-direction: column; gap: 12px;
+  #side { position: absolute; top: 14px; right: 14px; width: 330px; font-size: 15px; z-index: 1000; display: flex; flex-direction: column; gap: 12px;
           max-height: calc(100vh - 300px); overflow-y: auto; }
   #side .card { position: relative; top: auto; right: auto; width: auto; }
   #osiedle { display: none; padding: 14px 16px; }
   .os-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-  .os-name { font-weight: 700; font-size: 15px; letter-spacing: -.01em; }
+  .os-name { font-weight: 700; font-size: 17px; letter-spacing: -.01em; }
   .os-x { border: none; background: transparent; font-size: 20px; line-height: 1; padding: 0 4px; color: var(--muted); }
   .os-x:hover { background: transparent; color: var(--ink); }
   .os-sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
@@ -88,7 +124,7 @@
   .metric { margin-top: 14px; }
   .m-k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
   .m-row { display: flex; align-items: center; gap: 10px; margin-top: 2px; flex-wrap: wrap; }
-  .m-v { font-size: 22px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .m-v { font-size: 26px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
   .m-avg { color: var(--muted); font-size: 12px; margin-top: 2px; }
   .badge { display: inline-flex; align-items: center; font-weight: 700; font-size: 13px; padding: 3px 10px; border-radius: 99px; font-variant-numeric: tabular-nums; }
   .badge.up { background: #dcfce7; color: #15803d; }
@@ -96,11 +132,11 @@
   .badge.flat { background: #f1f5f9; color: var(--muted); }
 
   /* filtry: grupa analizy i pora dnia */
-  .filters { display: flex; gap: 20px; flex-basis: 100%; flex-wrap: wrap; align-items: center; }
+  .filters { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
   .fgroup { display: flex; align-items: center; gap: 8px; }
   .fl { color: var(--muted); font-size: 13px; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; }
-  .chip { border-radius: 99px; padding: 5px 12px; font-size: 13px; color: var(--muted); }
+  .chip { border-radius: 99px; padding: 5px 12px; font-size: 13px; color: var(--muted); user-select: none; }
   .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
   .seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; }
   .seg-b { border: none; border-radius: 0; padding: 6px 12px; font-size: 13px; color: var(--muted); background: transparent; }
@@ -109,6 +145,10 @@
   @media (max-width: 760px) {
     #stats { display: none; }
     #left { right: 14px; max-width: none; align-items: stretch; }
+    #headline { grid-template-columns: 1fr; gap: 14px; padding: 16px 18px; }
+    #hl-amount { font-size: 48px; }
+    #hl-title { font-size: 17px; }
+    .hl-side { min-width: 0; max-width: none; }
     #events-card { width: auto; }
     #cat { min-width: 0; width: 100%; }
     #bottom { right: 14px; }
@@ -120,11 +160,28 @@
 <div id="map"></div>
 
 <div id="left">
+<div id="headline" class="card">
+  <div class="hl-main">
+    <div class="hl-line"><span id="hl-title"></span><span id="hl-amount">…</span></div>
+    <div id="hl-sub" class="hl-tags"></div>
+  </div>
+  <div class="hl-side">
+    <div class="hl-k">Największa kategoria</div>
+    <div class="hl-top">
+      <div class="hl-ico" id="hl-ico">•</div>
+      <div><div id="hl-topname">…</div><div id="hl-topamt">…</div></div>
+    </div>
+    <div class="hl-bar"><div id="hl-barfill"></div></div>
+    <div class="hl-share" id="hl-share"></div>
+  </div>
+</div>
 <div id="top" class="card">
-  <h1>Transakcje kartowe w Poznaniu</h1>
-  <label class="field"><span>Kategoria</span><select id="cat"></select></label>
-  <label class="field" id="os-field" style="display:none"><span>Osiedle</span><select id="os-sel"></select></label>
-  <span id="status"></span>
+  <div class="top-row">
+    <h1>Transakcje kartowe w Poznaniu</h1>
+    <label class="field"><span>Kategoria</span><select id="cat"></select></label>
+    <label class="field" id="os-field" style="display:none"><span>Osiedle</span><select id="os-sel"></select></label>
+    <span id="status"></span>
+  </div>
   <div class="filters">
     <div class="fgroup"><span class="fl">Grupa</span><div id="grp-chips" class="chips"></div></div>
     <div class="fgroup"><span class="fl">Pora dnia</span><div id="band-seg" class="seg"></div></div>
@@ -136,12 +193,17 @@
 <div id="side">
 <div id="osiedle" class="card"><div id="os-body"></div></div>
 <div id="stats" class="card">
-  <div class="k">Transakcje</div>
+  <div class="k">Heatmapa wg</div>
+  <div class="seg" id="metric-seg" style="margin-bottom:10px">
+    <button class="seg-b on" data-metric="amt">Łącznej kwoty</button>
+    <button class="seg-b" data-metric="cnt">Liczby transakcji</button>
+  </div>
+  <div class="k" id="stats-k">Łączna kwota</div>
   <div id="total"></div>
   <div id="legend"></div>
   <div class="scale"><span>mało</span><span>dużo</span></div>
-  <label class="chk"><input id="showpts" type="checkbox"> Pokaż punkty (kody)</label>
-  <div class="foot">Kolor: log10 liczby transakcji. Promień plamy: wielkość obszaru kodu.</div>
+  <label class="chk"><input id="showpts" type="checkbox"> Pokaż punkty (kody pocztowe)</label>
+  <div class="foot" id="foot-txt"></div>
 </div>
 </div>
 
@@ -152,7 +214,10 @@
     <button id="next" title="Następny miesiąc">▶</button>
     <span id="date"></span>
     <input id="day" type="range" min="0" max="0" value="0">
-    <label class="chk"><input id="whole" type="checkbox" checked> Cały miesiąc (suma)</label>
+    <div class="seg" id="mode-seg">
+      <button class="seg-b on" data-mode="month">Per miesiąc</button>
+      <button class="seg-b" data-mode="day">Per dzień</button>
+    </div>
     <button id="play">▶ Play</button>
   </div>
 </div>
@@ -162,8 +227,8 @@ const $ = id => document.getElementById(id);
 const DNI = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'];
 const fmt = n => n.toLocaleString('pl-PL');
 
-let META, DATA = null, timer = null, EVENTS = [];
-const CACHE = {};
+let META, MD = null, CAT = 'all', timer = null, loading = false, goSeq = 0, EVENTS = [];   // MD = dane wybranego miesiąca dla kategorii CAT
+const MCACHE = {};                                   // klucz "kategoria|miesiąc" -> obietnica z danymi miesiąca
 const months = [], dayMonth = [], monthStart = [], monthLen = [];
 const state = { m: 0, dd: 0, whole: true };   // domyślnie suma miesiąca = widok jak w mapie Folium
 
@@ -179,6 +244,8 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
 const MAX_RPX = 400;  // maksymalny zasięg plamy w pikselach
 const MIN_OP = 0.5;   // minimalna nieprzezroczystość plamy: im wyżej, tym mniej pusto/przezroczyście tam, gdzie transakcji jest mało
 const R_SCALE = 2;    // zasięg plamy = R_SCALE x promień koła o powierzchni kodu
+const RES = 0.5;      // heatmapa jest rysowana w połowie rozdzielczości (4x mniej pikseli, rozmycie i tak jest miękkie)
+const PAD = 0.25;     // zapas canvasu z każdej strony (część rozmiaru mapy), żeby przeciąganie nie odsłaniało pustych brzegów
 
 const hex2rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
 
@@ -198,14 +265,19 @@ const HeatCanvas = L.Layer.extend({
     this._canvas.style.position = 'absolute';
     pane.appendChild(this._canvas);
     this._off = document.createElement('canvas');
-    map.on('move zoom moveend zoomend resize', this.schedule, this);
+    // przerysowujemy DOPIERO po zakończeniu ruchu; w trakcie przeciągania canvas przesuwa się razem z mapą
+    map.on('moveend zoomend resize', this.schedule, this);
+    map.on('zoomstart', this._hide, this);            // na czas animacji zoomu chowamy heatmapę (skalowałaby się źle)
     this.schedule();
   },
 
   onRemove: function (map) {
-    map.off('move zoom moveend zoomend resize', this.schedule, this);
+    map.off('moveend zoomend resize', this.schedule, this);
+    map.off('zoomstart', this._hide, this);
     this._canvas.remove();
   },
+
+  _hide: function () { this._canvas.style.opacity = 0; },
 
   setPoints: function (pts) { this._pts = pts; this.schedule(); },   // [{lat, lon, w (0..1), r (metry)}]
 
@@ -224,37 +296,44 @@ const HeatCanvas = L.Layer.extend({
   },
 
   draw: function () {
-    const map = this._map, size = map.getSize(), W = size.x, H = size.y;
-    if (this._canvas.width !== W || this._canvas.height !== H) {
-      this._canvas.width = this._off.width = W;
-      this._canvas.height = this._off.height = H;
+    const map = this._map, size = map.getSize();
+    const padX = Math.round(size.x * PAD), padY = Math.round(size.y * PAD);
+    const W = size.x + 2 * padX, H = size.y + 2 * padY;      // rozmiar canvasu w pikselach ekranu (z zapasem na przeciąganie)
+    const w = Math.ceil(W * RES), h = Math.ceil(H * RES);    // faktyczna rozdzielczość rysowania
+    if (this._canvas.width !== w || this._canvas.height !== h) {
+      this._canvas.width = this._off.width = w;
+      this._canvas.height = this._off.height = h;
+      this._canvas.style.width = W + 'px';                   // przeglądarka rozciąga mały canvas do pełnego rozmiaru
+      this._canvas.style.height = H + 'px';
     }
-    L.DomUtil.setPosition(this._canvas, map.containerPointToLayerPoint([0, 0]));   // canvas nad widocznym obszarem
+    L.DomUtil.setPosition(this._canvas, map.containerPointToLayerPoint([-padX, -padY]));
 
     const octx = this._off.getContext('2d', { willReadFrequently: true });
-    octx.clearRect(0, 0, W, H);
+    octx.clearRect(0, 0, w, h);
     const mpp = 156543.03392 * Math.cos(map.getCenter().lat * Math.PI / 180) / Math.pow(2, map.getZoom());   // metry na piksel
 
     for (const p of this._pts) {
       const pt = map.latLngToContainerPoint([p.lat, p.lon]);
-      const R = Math.min(MAX_RPX, Math.max(12, R_SCALE * p.r / mpp));
-      if (pt.x < -R || pt.y < -R || pt.x > W + R || pt.y > H + R) continue;
+      const x = (pt.x + padX) * RES, y = (pt.y + padY) * RES;
+      const R = Math.min(MAX_RPX, Math.max(12, R_SCALE * p.r / mpp)) * RES;
+      if (x < -R || y < -R || x > w + R || y > h + R) continue;
       const a = Math.min(1, Math.max(MIN_OP, p.w));
-      const g = octx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, R);
+      const g = octx.createRadialGradient(x, y, 0, x, y, R);
       g.addColorStop(0, 'rgba(0,0,0,' + a + ')');
       g.addColorStop(1, 'rgba(0,0,0,0)');
       octx.fillStyle = g;
       octx.beginPath();
-      octx.arc(pt.x, pt.y, R, 0, 2 * Math.PI);
+      octx.arc(x, y, R, 0, 2 * Math.PI);
       octx.fill();
     }
 
-    const img = octx.getImageData(0, 0, W, H), d = img.data, lut = this._lut;
+    const img = octx.getImageData(0, 0, w, h), d = img.data, lut = this._lut;
     for (let i = 3; i < d.length; i += 4) {          // kolor wg nieprzezroczystości piksela, alfa zostaje
       const al = d[i];
       if (al) { const j = al * 3; d[i - 3] = lut[j]; d[i - 2] = lut[j + 1]; d[i - 1] = lut[j + 2]; }
     }
     this._canvas.getContext('2d').putImageData(img, 0, 0);
+    this._canvas.style.opacity = 1;
   }
 });
 const heat = new HeatCanvas().addTo(map);
@@ -273,10 +352,10 @@ const PAIRS = [
 ];
 const ALL_PAIR = ['#ffd60a', '#f76707'];   // "Wszystkie kategorie": żółty -> pomarańczowy
 
-function setColor(file) {
+function setColor(cat) {
   let cols = ALL_PAIR;
-  if (file !== 'all.json') {
-    const i = META.cats.findIndex(c => c.file === file);
+  if (cat !== 'all') {
+    const i = META.cats.findIndex(c => c.key === cat);
     cols = PAIRS[i % PAIRS.length];
   }
   heat.setColors(cols[0], cols[1]);      // najsłabsze plamy w pierwszym kolorze pary, najsilniejsze w drugim
@@ -284,36 +363,54 @@ function setColor(file) {
 }
 const ptsLayer = L.layerGroup().addTo(map);
 
-// --- dane ---
-async function loadData(file) {
-  if (!CACHE[file]) {
-    $('status').textContent = 'Ładowanie…';
-    const resp = await fetch('data/' + file);
-    if (!resp.ok) throw new Error('Nie można wczytać data/' + file);
-    const j = await resp.json();
-    const nDays = META.days.length, NC = META.codes.length;
-    const D = Int32Array.from(j.d), C = Int32Array.from(j.c), N = Int32Array.from(j.n);
-    const F = j.f ? Int8Array.from(j.f) : new Int8Array(D.length);   // filtr: grupa analizy * 2 + pora dnia (0..7)
-    const S = j.s ? Float64Array.from(j.s) : null;         // suma kwot transakcji (jeśli dane ją zawierają)
-
-    const offsets = new Int32Array(nDays + 1);          // wiersze są posortowane po dniu, potem po kodzie i filtrze
-    for (let i = 0; i < D.length; i++) offsets[D[i] + 1]++;
-    for (let i = 0; i < nDays; i++) offsets[i + 1] += offsets[i];
-
-    // sumy miesięczne w rozbiciu na kod i filtr: indeks (miesiąc * NC + kod) * 8 + filtr
-    const sums = new Float64Array(months.length * NC * 8);
-    for (let i = 0; i < D.length; i++) sums[(dayMonth[D[i]] * NC + C[i]) * 8 + F[i]] += N[i];
-
-    let ssums = null;                                    // to samo dla sum kwot
-    if (S) {
-      ssums = new Float64Array(months.length * NC * 8);
-      for (let i = 0; i < D.length; i++) ssums[(dayMonth[D[i]] * NC + C[i]) * 8 + F[i]] += S[i];
+// --- dane: pliki miesięczne data/m/<kategoria>_<RRRR-MM>.bin (skompresowane gzip) albo .json ---
+// Ładujemy tylko wybrany miesiąc (i w trakcie odtwarzania następny), a nie cały zakres dat.
+async function readBinary(url) {
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error('Nie można wczytać ' + url);
+  let buf = await resp.arrayBuffer();
+  const u8 = new Uint8Array(buf);
+  if (u8.length > 2 && u8[0] === 0x1f && u8[1] === 0x8b) {           // gzip (chyba że serwer sam zdjął kompresję)
+    if (typeof DecompressionStream === 'undefined') {
+      throw new Error('Ta przeglądarka nie obsługuje dekompresji danych. Zaktualizuj przeglądarkę.');
     }
-
-    CACHE[file] = { D, C, F, N, S, offsets, sums, ssums, mx: {} };
-    $('status').textContent = '';
+    buf = await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
   }
-  DATA = CACHE[file];
+  return buf;
+}
+
+async function fetchMonth(cat, m) {
+  const NC = META.codes.length, len = monthLen[m], base = 'data/m/' + cat + '_' + months[m];
+  let D, C, F, N, S;                                   // dzień w miesiącu, kod, filtr (grupa * 2 + pora dnia), liczba, suma kwot
+  if (META.format === 'json') {
+    const resp = await fetch(base + '.json');
+    if (!resp.ok) throw new Error('Nie można wczytać ' + base + '.json');
+    const j = await resp.json();
+    D = Uint8Array.from(j.d); C = Uint16Array.from(j.c); F = Uint8Array.from(j.f);
+    N = Uint32Array.from(j.n); S = Uint32Array.from(j.s);
+  } else {
+    const buf = await readBinary(base + '.bin');       // układ: [liczba wierszy u32][n u32][s u32][kod u16][dzień u8][filtr u8]
+    const cnt = new DataView(buf).getUint32(0, true);
+    let o = 4;
+    N = new Uint32Array(buf, o, cnt); o += 4 * cnt;
+    S = new Uint32Array(buf, o, cnt); o += 4 * cnt;
+    C = new Uint16Array(buf, o, cnt); o += 2 * cnt;
+    D = new Uint8Array(buf, o, cnt); o += cnt;
+    F = new Uint8Array(buf, o, cnt);
+  }
+  const R = D.length;
+  const offsets = new Int32Array(len + 1);             // wiersze są posortowane po dniu, potem po kodzie i filtrze
+  for (let i = 0; i < R; i++) offsets[D[i] + 1]++;
+  for (let i = 0; i < len; i++) offsets[i + 1] += offsets[i];
+  const sums = new Float64Array(NC * 8), ssums = new Float64Array(NC * 8);    // suma miesiąca: indeks kod * 8 + filtr
+  for (let i = 0; i < R; i++) { const k = C[i] * 8 + F[i]; sums[k] += N[i]; ssums[k] += S[i]; }
+  return { D, C, F, N, S, offsets, sums, ssums };
+}
+
+function loadMonthData(cat, m) {
+  const key = cat + '|' + m;
+  if (!MCACHE[key]) MCACHE[key] = fetchMonth(cat, m).catch(e => { delete MCACHE[key]; throw e; });
+  return MCACHE[key];
 }
 
 // --- filtry: grupa analizy (kolumny lau_enr / issr_ctry_cd) i pora dnia (godzina z tran_id_gmt_tm, UTC) ---
@@ -321,6 +418,7 @@ async function loadData(file) {
 const fmask = new Uint8Array(8).fill(1);
 state.groups = [true, true, true, true];
 state.band = 'all';                               // 'all' | 0 (dzień 8-17) | 1 (wieczór/noc 18-7)
+state.metric = 'amt';                             // co rysuje heatmapa: 'amt' = łączna kwota transakcji (domyślnie), 'cnt' = liczba transakcji
 
 function updateMask() {
   for (let f = 0; f < 8; f++) {
@@ -333,57 +431,62 @@ function updateMask() {
 function periodTotals() {
   const NC = META.codes.length, cn = new Float64Array(NC), cs = new Float64Array(NC);
   if (state.whole) {
-    const base = state.m * NC * 8;
     for (let c = 0; c < NC; c++) {
       for (let f = 0; f < 8; f++) {
         if (!fmask[f]) continue;
-        const k = base + c * 8 + f;
-        cn[c] += DATA.sums[k];
-        if (DATA.ssums) cs[c] += DATA.ssums[k];
+        const k = c * 8 + f;
+        cn[c] += MD.sums[k];
+        cs[c] += MD.ssums[k];
       }
     }
   } else {
-    const di = monthStart[state.m] + state.dd;
-    for (let i = DATA.offsets[di]; i < DATA.offsets[di + 1]; i++) {
-      if (!fmask[DATA.F[i]]) continue;
-      cn[DATA.C[i]] += DATA.N[i];
-      if (DATA.S) cs[DATA.C[i]] += DATA.S[i];
+    for (let i = MD.offsets[state.dd]; i < MD.offsets[state.dd + 1]; i++) {
+      if (!fmask[MD.F[i]]) continue;
+      cn[MD.C[i]] += MD.N[i];
+      cs[MD.C[i]] += MD.S[i];
     }
   }
   return { cn, cs };
 }
 
-// maksymalne wartości do skali kolorów (dzień / miesiąc) przy aktywnych filtrach; liczone raz i zapamiętywane
+// maksymalne wartości do skali kolorów (dzień / miesiąc) przy aktywnych filtrach: wspólne dla wszystkich miesięcy,
+// wyliczone w export_data.py (meta.json -> scales), dzięki czemu nie trzeba ładować całego zakresu dat
 function maxes() {
   const key = Array.from(fmask).join('');
-  if (DATA.mx[key]) return DATA.mx[key];
-  const n = DATA.D.length, NC = META.codes.length;
+  const amt = state.metric === 'amt';
+  const sc = META.scales && META.scales[CAT] && META.scales[CAT][key];      // [dzień liczba, miesiąc liczba, dzień kwota, miesiąc kwota]
+  const off = amt ? 2 : 0;
+  if (sc && sc.length >= off + 2) return { maxDay: Math.max(1, sc[off]), maxMonth: Math.max(1, sc[off + 1]) };
+
+  // awaryjnie (dane bez skal): maksima z bieżącego miesiąca
+  const NC = META.codes.length, n = MD.D.length, month = amt ? MD.ssums : MD.sums, val = amt ? MD.S : MD.N;
+  let maxMonth = 1;
+  for (let c = 0; c < NC; c++) {
+    let v = 0;
+    for (let f = 0; f < 8; f++) if (fmask[f]) v += month[c * 8 + f];
+    if (v > maxMonth) maxMonth = v;
+  }
   let maxDay = 1, i = 0;
   while (i < n) {                                  // wiersze tego samego dnia i kodu są obok siebie (różnią się filtrem)
-    const d = DATA.D[i], c = DATA.C[i];
+    const d = MD.D[i], c = MD.C[i];
     let v = 0;
-    while (i < n && DATA.D[i] === d && DATA.C[i] === c) { if (fmask[DATA.F[i]]) v += DATA.N[i]; i++; }
+    while (i < n && MD.D[i] === d && MD.C[i] === c) { if (fmask[MD.F[i]]) v += val[i]; i++; }
     if (v > maxDay) maxDay = v;
   }
-  let maxMonth = 1;
-  for (let m = 0; m < months.length; m++) {
-    for (let c = 0; c < NC; c++) {
-      let v = 0;
-      for (let f = 0; f < 8; f++) if (fmask[f]) v += DATA.sums[(m * NC + c) * 8 + f];
-      if (v > maxMonth) maxMonth = v;
-    }
-  }
-  return (DATA.mx[key] = { maxDay, maxMonth });
+  return { maxDay, maxMonth };
 }
 
 // --- rysowanie klatki ---
 function render() {
+  if (!MD) return;                                 // dane miesiąca jeszcze się ładują
   const NC = META.codes.length;
   const pts = [];          // [indeks kodu, liczba]
   let total = 0, max, label, rFrom, rTo;
 
-  const { cn } = periodTotals();
-  for (let c = 0; c < NC; c++) if (cn[c] > 0) { pts.push([c, cn[c]]); total += cn[c]; }
+  const { cn, cs } = periodTotals();
+  const amt = state.metric === 'amt';
+  const vals = amt ? cs : cn;                      // wartość rysowana na heatmapie: kwota albo liczba transakcji
+  for (let c = 0; c < NC; c++) if (vals[c] > 0) { pts.push([c, vals[c]]); total += vals[c]; }
   const mx = maxes();
 
   if (state.whole) {
@@ -407,47 +510,186 @@ function render() {
   ptsLayer.clearLayers();
   if ($('showpts').checked) {
     pts.forEach(([c, v]) => L.circleMarker([META.codes[c].lat, META.codes[c].lon], { radius: 4, weight: 1 })
-      .bindTooltip(META.codes[c].k + ': ' + fmt(v)).addTo(ptsLayer));
+      .bindTooltip(META.codes[c].k + ': ' + (amt ? fmtMoney(v) : fmt(v))).addTo(ptsLayer));
   }
 
   $('date').textContent = label;
-  $('total').textContent = fmt(total);
+  $('total').textContent = amt ? fmtMoney(total) : fmt(total);
+  $('stats-k').textContent = amt ? 'Łączna kwota' : 'Transakcje';
+  $('foot-txt').textContent = 'Kolor: log10 ' + (amt ? 'łącznej kwoty transakcji' : 'liczby transakcji') +
+    ' w kodzie pocztowym. Promień plamy: wielkość obszaru kodu.';
+  renderHeadline(label);
   renderEvents(rFrom, rTo);
   renderOsiedle(label);
 }
 
+// --- kwoty (suma cs_tran_amt) przy aktywnych filtrach: kategoria, osiedle, grupa, pora dnia, wybrany okres ---
+// "w Poznaniu" = kody pocztowe przeliczone na osiedla (wagi z osiedla_w.json); po wyborze osiedla tylko to osiedle.
+function fmtMoney(v) {
+  const a = Math.abs(v);
+  if (a >= 1e6) return (v / 1e6).toLocaleString('pl-PL', { maximumFractionDigits: a >= 1e8 ? 0 : 1 }) + ' mln';
+  if (a >= 1e3) return (v / 1e3).toLocaleString('pl-PL', { maximumFractionDigits: 1 }) + ' tys.';
+  return Math.round(v).toLocaleString('pl-PL');
+}
+
+// waga każdego kodu pocztowego: wybrane osiedle -> jego udziały, brak wyboru -> suma udziałów we wszystkich osiedlach
+function weightVec() {
+  const wv = new Float64Array(META.codes.length);
+  if (!OS) { wv.fill(1); return wv; }              // bez danych osiedli liczymy wszystkie kody
+  if (selOs >= 0) for (const [c, w] of OS.W[selOs]) wv[c] = w;
+  else for (const ws of OS.W) for (const [c, w] of ws) wv[c] += w;
+  return wv;
+}
+
+// kwota w wyświetlanym okresie (dzień lub cały miesiąc) dla danych miesiąca md
+function amountOf(md, wv) {
+  let s = 0;
+  if (state.whole) {
+    for (let c = 0; c < wv.length; c++) {
+      if (!wv[c]) continue;
+      for (let f = 0; f < 8; f++) if (fmask[f]) s += md.ssums[c * 8 + f] * wv[c];
+    }
+  } else {
+    for (let i = md.offsets[state.dd]; i < md.offsets[state.dd + 1]; i++) if (fmask[md.F[i]]) s += md.S[i] * wv[md.C[i]];
+  }
+  return s;
+}
+
+const GSHORT = ['Mieszkańcy Poznania', 'Mieszkańcy obwarzanka', 'Obcokrajowcy', 'Mieszkańcy spoza metropolii'];
+function whoLabel() {
+  const sel = state.groups.map((on, g) => (on ? g : -1)).filter(g => g >= 0);
+  return sel.length === 4 ? 'Wszyscy' : sel.map(g => GSHORT[g]).join(', ');
+}
+
+const CAT_ICONS = {
+  'Duże supermarkety': '🛒', 'Małe sklepy spożywcze': '🥖', 'Restauracje i miejsca do jedzenia': '🍽️', 'Stacje benzynowe': '⛽',
+  'Fast Foody': '🍔', 'Piekarnie i cukiernie': '🥐', 'Baza noclegowa i hotele': '🏨', 'Zakupy spożywcze i gastronomia (pozostałe)': '🍴',
+  'Transport i motoryzacja (pozostałe)': '🚗', 'Zdrowie i uroda': '💊', 'Zakupy detaliczne i dom': '🛍️',
+  'Rozrywka, kultura i rekreacja': '🎭', 'Usługi, finanse i opłaty urzędowe': '🧾'
+};
+
+// nagłówek: "X zostawili w Poznaniu Y" + największa kategoria dla wybranych filtrów
+function renderHeadline(label) {
+  const wv = weightVec();
+  const catName = CAT === 'all' ? null : META.cats.find(c => c.key === CAT).name;
+  const parts = [];
+  if (catName) parts.push(catName);
+  if (OS && selOs >= 0) parts.push('osiedle ' + OS.names[selOs]);
+  if (state.band !== 'all') parts.push((META.pory || ['Dzień (8–17)', 'Wieczór/noc (18–7)'])[state.band]);
+  parts.push(label);
+  $('hl-title').textContent = whoLabel() + ' zostawili w Poznaniu';
+  const amount = amountOf(MD, wv);
+  $('hl-amount').textContent = amount > 0 ? '+ ' + fmtMoney(amount) : '0';
+  const tags = $('hl-sub');                        // kontekst jako plakietki: kategoria, osiedle, pora dnia, okres
+  tags.textContent = '';
+  parts.forEach(p => tags.appendChild(el('span', 'hl-tag', p)));
+  updateTopCategory();
+}
+
+// największa kategoria: sumujemy kwoty we wszystkich kategoriach (ignorując wybór kategorii), przy tych samych pozostałych filtrach
+let topSeq = 0;
+async function updateTopCategory() {
+  const my = ++topSeq;
+  try {
+    const mds = await Promise.all(META.cats.map(c => loadMonthData(c.key, state.m)));
+    if (my !== topSeq) return;
+    const wv = weightVec();
+    const amts = mds.map(md => amountOf(md, wv));
+    const total = amts.reduce((a, b) => a + b, 0);
+    let bi = 0;
+    amts.forEach((v, i) => { if (v > amts[bi]) bi = i; });
+    const name = META.cats[bi] ? META.cats[bi].name : '';
+    $('hl-topname').textContent = total > 0 ? name : 'Brak danych';
+    $('hl-share').textContent = total > 0 ? (100 * amts[bi] / total).toLocaleString('pl-PL', { maximumFractionDigits: 1 }) +
+      '% łącznej kwoty (dla wybranych filtrów)' : '';
+    $('hl-topamt').textContent = total > 0 ? '+ ' + fmtMoney(amts[bi]) : '—';
+    $('hl-ico').textContent = CAT_ICONS[name] || '•';
+    $('hl-barfill').style.width = total > 0 ? (100 * amts[bi] / total).toFixed(1) + '%' : '0';
+  } catch (err) { /* kategorie ładują się w tle; przy błędzie zostaje poprzedni stan */ }
+}
+
+// --- wydarzenia: kwota "dodatkowo ponad zwykły dzień" przy aktywnych filtrach ---
+// dodatkowe wydatki = suma kwot z dni wydarzenia minus liczba dni * średnia dzienna kwota z dni miesiąca bez żadnego wydarzenia
+const DAYIDX = new Map();        // data -> indeks dnia
+let EVDAYS = new Set();          // indeksy dni, w których trwa jakiekolwiek wydarzenie
+function datesBetween(a, b) {
+  const out = [], d = new Date(a + 'T12:00:00Z'), end = new Date(b + 'T12:00:00Z');
+  while (d <= end && out.length < 400) { out.push(d.toISOString().slice(0, 10)); d.setUTCDate(d.getUTCDate() + 1); }
+  return out;
+}
+
+const DACACHE = new Map();
+function dayAmts(m, md, wv) {    // kwota dla każdego dnia miesiąca przy aktywnych filtrach
+  const key = [CAT, m, Array.from(fmask).join(''), selOs].join('|');
+  if (DACACHE.has(key)) return DACACHE.get(key);
+  const arr = new Float64Array(monthLen[m]);
+  for (let i = 0; i < md.D.length; i++) if (fmask[md.F[i]]) arr[md.D[i]] += md.S[i] * wv[md.C[i]];
+  if (DACACHE.size > 300) DACACHE.clear();
+  DACACHE.set(key, arr);
+  return arr;
+}
+
+async function eventExtras(list) {
+  const wv = weightVec(), cat = CAT;
+  const need = new Set();
+  list.forEach(e => datesBetween(e[0], e[1]).forEach(d => { if (DAYIDX.has(d)) need.add(dayMonth[DAYIDX.get(d)]); }));
+  const arrs = {}, base = {};
+  await Promise.all([...need].map(async m => {
+    const md = await loadMonthData(cat, m);
+    const arr = dayAmts(m, md, wv);
+    arrs[m] = arr;
+    let s = 0, n = 0;
+    for (let dd = 0; dd < arr.length; dd++) if (!EVDAYS.has(monthStart[m] + dd)) { s += arr[dd]; n++; }
+    base[m] = n ? s / n : NaN;
+  }));
+  return list.map(e => {
+    let extra = 0, ok = false;
+    datesBetween(e[0], e[1]).forEach(d => {
+      const di = DAYIDX.get(d);
+      if (di === undefined) return;
+      const m = dayMonth[di];
+      if (isFinite(base[m])) { extra += arrs[m][di - monthStart[m]] - base[m]; ok = true; }
+    });
+    return ok ? extra : NaN;
+  });
+}
+
 // wydarzenia z docs/data/events.json: [data_od, data_do, nazwa]; pokazujemy te, które trwają w wyświetlanym dniu (lub miesiącu)
+let evSeq = 0;
 function renderEvents(from, to) {
   const box = $('events');
   const list = EVENTS.filter(e => e[0] <= to && e[1] >= from);
   const dm = d => d.slice(8, 10) + '.' + d.slice(5, 7);
   box.textContent = '';
-  const h = document.createElement('div');
-  h.className = 'ev-head';
-  h.textContent = from === to ? 'Wydarzenia w Poznaniu, ' + from : 'Wydarzenia w Poznaniu w miesiącu ' + from.slice(0, 7);
-  box.appendChild(h);
+  box.appendChild(el('div', 'ev-head', from === to ? 'Wydarzenia w Poznaniu, ' + from : 'Wydarzenia w Poznaniu w miesiącu ' + from.slice(0, 7)));
+  box.appendChild(el('div', 'ev-sub', 'Dodatkowe wydatki ponad zwykły dzień (dla wybranych filtrów)'));
   if (!list.length) {
-    const p = document.createElement('div');
-    p.className = 'ev-empty';
-    p.textContent = 'Brak dużych wydarzeń w bazie';
-    box.appendChild(p);
+    box.appendChild(el('div', 'ev-empty', 'Brak dużych wydarzeń w bazie'));
     return;
   }
-  const ul = document.createElement('ul');       // każde wydarzenie w osobnym wierszu
-  ul.className = 'ev-list';
+  const ul = el('ul', 'ev-list');                   // każde wydarzenie w osobnym wierszu
+  const badges = [];
   list.forEach(e => {
-    const li = document.createElement('li');
-    const d = document.createElement('span');
-    d.className = 'ev-date';
-    d.textContent = e[0] === e[1] ? dm(e[0]) : dm(e[0]) + '–' + dm(e[1]);
-    const n = document.createElement('span');
-    n.className = 'ev-name';
-    n.textContent = e[2];
-    li.appendChild(d);
-    li.appendChild(n);
+    const li = el('li');
+    li.appendChild(el('span', 'ev-date', e[0] === e[1] ? dm(e[0]) : dm(e[0]) + '–' + dm(e[1])));
+    li.appendChild(el('span', 'ev-name', e[2]));
+    const b = el('span', 'ev-amt flat', '…');
+    badges.push(b);
+    li.appendChild(b);
     ul.appendChild(li);
   });
   box.appendChild(ul);
+
+  const my = ++evSeq;
+  eventExtras(list).then(vals => {
+    if (my !== evSeq) return;                       // filtry lub okres zmieniły się w międzyczasie
+    vals.forEach((v, i) => {
+      const b = badges[i];
+      if (!isFinite(v)) { b.className = 'ev-amt flat'; b.textContent = '—'; return; }
+      b.className = 'ev-amt ' + (v >= 0 ? 'up' : 'down');
+      b.textContent = (v >= 0 ? '+ ' : '− ') + fmtMoney(Math.abs(v));
+    });
+  }).catch(() => { badges.forEach(b => { b.textContent = '—'; }); });
 }
 
 // --- osiedla: rysowanie na mapie, wybór (klik lub lista) i porównanie ze średnią ---
@@ -466,20 +708,75 @@ const el = (tag, cls, text) => {
   return e;
 };
 
+// które osiedle leży pod punktem (lon/lat): test punktu w wielokącie (z pominięciem dziur), najpierw szybki test ramki
+function ringHas(ring, x, y) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+function osAt(latlng) {
+  if (!OS) return -1;
+  const x = latlng.lng, y = latlng.lat;
+  for (let i = 0; i < OS.geom.length; i++) {
+    const g = OS.geom[i];
+    if (!g || x < g.minx || x > g.maxx || y < g.miny || y > g.maxy) continue;
+    for (const p of g.polys) {
+      if (ringHas(p[0], x, y) && !p.slice(1).some(h => ringHas(h, x, y))) return i;
+    }
+  }
+  return -1;
+}
+
+// podpis z nazwą osiedla przy kursorze (rysowany tylko po zakończeniu klatki, nie blokuje przeciągania)
+const hoverBox = document.createElement('div');
+hoverBox.className = 'os-hover';
+map.getContainer().appendChild(hoverBox);
+let hoverRaf = 0, hoverEvt = null;
+map.on('mousemove', e => {
+  hoverEvt = e;
+  if (hoverRaf) return;
+  hoverRaf = requestAnimationFrame(() => {
+    hoverRaf = 0;
+    const i = osAt(hoverEvt.latlng);
+    if (i < 0) { hoverBox.style.display = 'none'; return; }
+    hoverBox.textContent = OS.names[i];
+    hoverBox.style.display = 'block';
+    hoverBox.style.left = (hoverEvt.containerPoint.x + 14) + 'px';
+    hoverBox.style.top = (hoverEvt.containerPoint.y + 14) + 'px';
+  });
+});
+map.on('mouseout dragstart zoomstart', () => { hoverBox.style.display = 'none'; });
+// klik na mapie wybiera osiedle pod kursorem (ponowny klik w to samo osiedle odznacza); Leaflet nie wysyła kliku po przeciągnięciu
+map.on('click', e => {
+  const i = osAt(e.latlng);
+  if (i >= 0) selectOsiedle(selOs === i ? -1 : i, false);
+});
+
 async function loadOsiedla() {
   try {
     const [g, w] = await Promise.all([fetch('data/osiedla.geojson'), fetch('data/osiedla_w.json')]);
     if (!g.ok || !w.ok) return;                       // osiedla są opcjonalne
     const geo = await g.json(), W = await w.json();
-    OS = { layers: [], names: [], W };
+    OS = { layers: [], names: [], W, geom: [] };
+    // Obrysy są NIEinteraktywne (nie przechwytują myszy), więc nie mogą blokować przeciągania mapy.
+    // Klik i podpis po najechaniu obsługujemy na poziomie mapy (sprawdzamy, w którym osiedlu jest kursor).
     L.geoJSON(geo, {
       style: OS_STYLE,
+      interactive: false,
       onEachFeature: (f, layer) => {
         const i = f.properties.i;
         OS.layers[i] = layer;
         OS.names[i] = f.properties.name;
-        layer.bindTooltip(f.properties.name, { sticky: true });
-        layer.on('click', () => selectOsiedle(selOs === i ? -1 : i, false));   // ponowny klik odznacza
+        const polys = f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates : [f.geometry.coordinates];
+        let minx = 1e9, miny = 1e9, maxx = -1e9, maxy = -1e9;
+        polys.forEach(p => p[0].forEach(([x, y]) => {
+          if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y;
+        }));
+        OS.geom[i] = { polys, minx, miny, maxx, maxy };
       }
     }).addTo(map);
 
@@ -502,7 +799,7 @@ function selectOsiedle(i, fit) {
     if (fit) map.fitBounds(OS.layers[i].getBounds(), { maxZoom: 14, padding: [60, 60] });
   }
   $('os-sel').value = String(i);
-  renderOsiedle();
+  render();                                          // osiedle wpływa też na nagłówek z kwotą i kwoty przy wydarzeniach
 }
 
 // plakietka: więcej niż średnia = zielona z plusem, mniej = czerwona z minusem
@@ -526,7 +823,7 @@ function metric(label, value, pct, avgText) {
 
 function renderOsiedle(label) {
   if (label !== undefined) osLabel = label;
-  if (!OS || !DATA) return;
+  if (!OS || !MD) return;
   const body = $('os-body');
   body.textContent = '';
   if (selOs < 0) {
@@ -548,8 +845,7 @@ function renderOsiedle(label) {
   const meanN = sumN / nOs;                            // średnia liczba transakcji na osiedle
   const N = Nos[selOs], S = Sos[selOs];
 
-  const file = $('cat').value;
-  const catName = file === 'all.json' ? 'Wszystkie kategorie' : META.cats.find(c => c.file === file).name;
+  const catName = CAT === 'all' ? 'Wszystkie kategorie' : META.cats.find(c => c.key === CAT).name;
 
   const head = el('div', 'os-head');
   head.appendChild(el('div', 'os-name', OS.names[selOs]));
@@ -564,7 +860,7 @@ function renderOsiedle(label) {
   body.appendChild(metric('Liczba transakcji', fmt(Math.round(N)), (N - meanN) / meanN * 100,
     'Średnia na osiedle: ' + fmt(Math.round(meanN))));
 
-  if (DATA.S) {
+  if (MD.S) {
     const avgOs = N > 0 ? S / N : NaN, avgAll = totN > 0 ? totS / totN : NaN;
     body.appendChild(metric('Średnia kwota transakcji', isFinite(avgOs) ? money(avgOs) : '—', (avgOs - avgAll) / avgAll * 100,
       'Średnia ze wszystkich transakcji: ' + (isFinite(avgAll) ? money(avgAll) : '—')));
@@ -582,10 +878,16 @@ function buildFilters() {
   chips.textContent = '';
   GN.forEach((name, g) => {
     const b = el('button', 'chip on', name);
-    b.title = TIPS[g] || '';
+    b.title = (TIPS[g] || '') + ' (dwuklik: tylko ta grupa)';
     b.onclick = () => {
       state.groups[g] = !state.groups[g];
       if (!state.groups.some(Boolean)) state.groups[g] = true;          // zawsze co najmniej jedna grupa
+      chips.querySelectorAll('.chip').forEach((x, i) => x.classList.toggle('on', state.groups[i]));
+      updateMask();
+      render();
+    };
+    b.ondblclick = () => {                                              // dwuklik: tylko ta grupa, reszta odznaczona
+      state.groups = state.groups.map((_, i) => i === g);
       chips.querySelectorAll('.chip').forEach((x, i) => x.classList.toggle('on', state.groups[i]));
       updateMask();
       render();
@@ -613,16 +915,44 @@ function syncUI() {
   $('day').max = monthLen[state.m] - 1;
   $('day').value = state.dd;
   $('day').disabled = state.whole;
+  document.querySelectorAll('#mode-seg .seg-b').forEach(b => b.classList.toggle('on', (b.dataset.mode === 'month') === state.whole));
+  $('prev').title = state.whole ? 'Poprzedni miesiąc' : 'Poprzedni dzień';
+  $('next').title = state.whole ? 'Następny miesiąc' : 'Następny dzień';
 }
 
-function go(m, dd) {
+// strzałki: w trybie "per miesiąc" przewijają miesiące, w trybie "per dzień" dni (na granicy miesiąca przechodzą do sąsiedniego)
+function shift(dir) {
+  if (state.whole) return go(state.m + dir, 0);
+  const n = META.days.length;
+  const ni = ((monthStart[state.m] + state.dd + dir) % n + n) % n;
+  const m = dayMonth[ni];
+  return go(m, ni - monthStart[m]);
+}
+
+// przejście do miesiąca m i dnia dd: najpierw ładujemy dane miesiąca, potem rysujemy
+async function go(m, dd) {
   state.m = ((m % months.length) + months.length) % months.length;
   state.dd = Math.min(dd, monthLen[state.m] - 1);
   syncUI();
-  render();
+  const my = ++goSeq;                              // późniejsze przejście unieważnia wcześniejsze, jeszcze ładujące się
+  loading = true;
+  $('status').textContent = 'Ładowanie…';
+  try {
+    const d = await loadMonthData(CAT, state.m);
+    if (my !== goSeq) return;
+    MD = d;
+    $('status').textContent = '';
+    render();
+    if (timer) loadMonthData(CAT, (state.m + 1) % months.length).catch(() => {});   // podczas Play wczytaj następny miesiąc z wyprzedzeniem
+  } catch (err) {
+    if (my === goSeq) $('status').textContent = err.message;
+  } finally {
+    if (my === goSeq) loading = false;
+  }
 }
 
 function step() {
+  if (loading) return;                             // czekamy na dane, zamiast pomijać miesiące
   if (state.whole) return go(state.m + 1, 0);
   if (state.dd + 1 >= monthLen[state.m]) return go(state.m + 1, 0);
   go(state.m, state.dd + 1);
@@ -642,25 +972,37 @@ async function init() {
     monthLen[months.length - 1]++;
   });
 
+  META.days.forEach((d, i) => DAYIDX.set(d, i));
+  EVENTS.forEach(e => datesBetween(e[0], e[1]).forEach(d => { if (DAYIDX.has(d)) EVDAYS.add(DAYIDX.get(d)); }));
+
   $('month').innerHTML = months.map((m, i) => '<option value="' + i + '">' + m + '</option>').join('');
-  $('cat').innerHTML = '<option value="all.json">Wszystkie kategorie (' + fmt(META.total) + ')</option>' +
-    META.cats.map(c => '<option value="' + c.file + '">' + c.name + ' (' + fmt(c.n) + ')</option>').join('');
+  $('cat').innerHTML = '<option value="all">Wszystkie kategorie (' + fmt(META.total) + ')</option>' +
+    META.cats.map(c => '<option value="' + c.key + '">' + c.name + ' (' + fmt(c.n) + ')</option>').join('');
 
   buildFilters();
   await loadOsiedla();
-  await loadData('all.json');
-  setColor('all.json');
-  go(0, 0);
+  CAT = 'all';
+  setColor(CAT);
+  await go(0, 0);
 }
 
-$('cat').onchange = async e => { try { await loadData(e.target.value); setColor(e.target.value); render(); } catch (err) { $('status').textContent = err.message; } };
+$('cat').onchange = e => { CAT = e.target.value; setColor(CAT); go(state.m, state.dd); };
 $('os-sel').onchange = e => selectOsiedle(+e.target.value, true);
 $('month').onchange = e => go(+e.target.value, 0);
-$('prev').onclick = () => go(state.m - 1, 0);
-$('next').onclick = () => go(state.m + 1, 0);
+$('prev').onclick = () => shift(-1);
+$('next').onclick = () => shift(1);
 $('day').oninput = e => { state.dd = +e.target.value; render(); };
-$('whole').onchange = e => { state.whole = e.target.checked; syncUI(); render(); };
+document.querySelectorAll('#mode-seg .seg-b').forEach(b => {
+  b.onclick = () => { state.whole = b.dataset.mode === 'month'; syncUI(); render(); };
+});
 $('showpts').onchange = render;
+document.querySelectorAll('#metric-seg .seg-b').forEach(b => {
+  b.onclick = () => {                              // przełącznik: heatmapa wg łącznej kwoty albo liczby transakcji
+    state.metric = b.dataset.metric;
+    document.querySelectorAll('#metric-seg .seg-b').forEach(x => x.classList.toggle('on', x === b));
+    render();
+  };
+});
 $('play').onclick = () => {
   if (timer) { clearInterval(timer); timer = null; $('play').textContent = '▶ Play'; return; }
   $('play').textContent = '⏸ Pause';

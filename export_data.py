@@ -18,12 +18,16 @@ Uruchomienie (w środowisku conda datasprint):
     python export_data.py --parquet C:/sciezka/plik.parquet   (dowolny inny plik)
 """
 import argparse
+import gzip
 import json
 import math
+import shutil
+import struct
 import sys
 from pathlib import Path
 
 import duckdb
+import numpy as np
 import pandas as pd
 
 from kategorie_glowne import GLOWNE, INNE, case_sql      # agregacja kategorii (przepisana z zapytania SQL)
@@ -44,6 +48,7 @@ OBWARZANEK = ("BUK", "CZERWONAK", "DOPIEWO", "KLESZCZEWO", "KOMORNIKI", "KORNIK"
               "TARNOWO PODGORNE")
 # pora dnia (wg zapytania SQL, godzina z tran_id_gmt_tm, czas GMT/UTC): indeks b = 0..1
 PORY = ["Dzień (8–17)", "Wieczór/noc (18–7)"]
+FORMAT = "bin"                # format plików miesięcznych: "bin" (mniejszy i szybszy, gzip) albo "json" (awaryjnie, czytelny)
 MIN_N = 1                     # ukryj komórki (dzień x kod x kategoria) z mniejszą liczbą transakcji (prywatność)
 MEM = "4GB"                   # limit pamięci DuckDB
 
@@ -181,24 +186,93 @@ kat_order = [k for k in kat_sum.index if k != tail] + ([tail] if tail in kat_sum
 OUT.mkdir(parents=True, exist_ok=True)
 for old in OUT.glob("*.json"):
     old.unlink()
+shutil.rmtree(OUT / "m", ignore_errors=True)               # stare pliki miesięczne
+(OUT / "m").mkdir()
+
+# --- pliki miesięczne: data/m/<kategoria>_<RRRR-MM>.bin (lub .json) ---
+# Strona ładuje tylko wybrany miesiąc, więc start i zmiana kategorii pobierają niewielką część danych.
+# Układ .bin (gzip): [liczba wierszy u32][n u32 x R][s u32 x R][kod u16 x R][dzień w miesiącu u8 x R][filtr u8 x R],
+# wiersze posortowane po (dzień, kod, filtr).
+df["mon"] = df["dt"].dt.strftime("%Y-%m")
+months = sorted(df["mon"].unique().tolist() + [d.strftime("%Y-%m") for d in dni])
+months = sorted(set(months))
+month_start_idx = {}                                       # indeks pierwszego dnia miesiąca w tablicy dni
+for i, d in enumerate(dni):
+    month_start_idx.setdefault(d.strftime("%Y-%m"), i)
+df["dm"] = df["d"] - df["mon"].map(month_start_idx)        # numer dnia w miesiącu (0 = pierwszy dzień w danych)
+if df["dm"].max() > 255:
+    sys.exit("Za duży numer dnia w miesiącu (błąd danych).")
+
+sizes = {}
+largest = 0
 
 
-def dump(name, frame):
-    g = frame.groupby(["d", "c", "f"], as_index=False)[["n", "s"]].sum().sort_values(["d", "c", "f"])
-    payload = {"d": g["d"].astype(int).tolist(), "c": g["c"].astype(int).tolist(), "f": g["f"].astype(int).tolist(),
-               "n": g["n"].astype(int).tolist(),
-               "s": g["s"].round(0).astype(int).tolist()}      # s = suma kwot transakcji (zaokrąglona do jedności)
-    p = OUT / name
-    p.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
-    return p.stat().st_size
+def dump_months(key, frame):
+    """Zapisuje wszystkie miesiące danej kategorii (puste miesiące też, żeby strona nie dostała 404)."""
+    global largest
+    groups = dict(tuple(frame.groupby("mon"))) if len(frame) else {}
+    total_bytes = 0
+    for mon in months:
+        part = groups.get(mon)
+        if part is None:
+            n = s = np.zeros(0, dtype=np.int64)
+            c = d = f = np.zeros(0, dtype=np.int64)
+        else:
+            g = part.groupby(["dm", "c", "f"], as_index=False)[["n", "s"]].sum().sort_values(["dm", "c", "f"])
+            n = g["n"].to_numpy(dtype=np.int64)
+            s = np.rint(g["s"].to_numpy(dtype=np.float64)).astype(np.int64)     # s = suma kwot (zaokrąglona do jedności)
+            c, d, f = g["c"].to_numpy(), g["dm"].to_numpy(), g["f"].to_numpy()
+        n = np.clip(n, 0, 4294967295)
+        s = np.clip(s, 0, 4294967295)
+        if FORMAT == "json":
+            p = OUT / "m" / f"{key}_{mon}.json"
+            p.write_text(json.dumps({"d": d.astype(int).tolist(), "c": c.astype(int).tolist(), "f": f.astype(int).tolist(),
+                                     "n": n.astype(int).tolist(), "s": s.astype(int).tolist()}, separators=(",", ":")),
+                         encoding="utf-8")
+        else:
+            buf = (struct.pack("<I", len(n)) + n.astype("<u4").tobytes() + s.astype("<u4").tobytes()
+                   + c.astype("<u2").tobytes() + d.astype("u1").tobytes() + f.astype("u1").tobytes())
+            p = OUT / "m" / f"{key}_{mon}.bin"
+            p.write_bytes(gzip.compress(buf, 9))
+        size = p.stat().st_size
+        total_bytes += size
+        largest = max(largest, size)
+    sizes[key] = total_bytes
 
 
-sizes = {"all.json": dump("all.json", df)}
+def scales_for(frame):
+    """Maksima (dzień / miesiąc, na kod) dla każdej kombinacji filtrów: wspólna skala kolorów dla wszystkich miesięcy.
+    Wynik: [maks. dzień liczba, maks. miesiąc liczba, maks. dzień kwota, maks. miesiąc kwota]."""
+    dense = np.zeros((len(dni), len(kody), 8), dtype=np.float64)      # liczba transakcji
+    dense_s = np.zeros((len(dni), len(kody), 8), dtype=np.float64)    # suma kwot
+    if len(frame):
+        g = frame.groupby(["d", "c", "f"], as_index=False)[["n", "s"]].sum()
+        idx = (g["d"].to_numpy(), g["c"].to_numpy(), g["f"].to_numpy())
+        np.add.at(dense, idx, g["n"].to_numpy(dtype=np.float64))
+        np.add.at(dense_s, idx, g["s"].to_numpy(dtype=np.float64))
+    starts = [month_start_idx[m] for m in months]
+    out = {}
+    for gm in range(1, 16):                                # niepuste podzbiory 4 grup
+        for band in ("all", 0, 1):
+            vec = np.array([1.0 if ((gm >> (f >> 1)) & 1) and (band == "all" or band == (f & 1)) else 0.0 for f in range(8)])
+            daily, daily_s = dense @ vec, dense_s @ vec
+            monthly = np.add.reduceat(daily, starts, axis=0)
+            monthly_s = np.add.reduceat(daily_s, starts, axis=0)
+            out["".join("1" if v else "0" for v in vec)] = [int(daily.max()), int(monthly.max()),
+                                                            int(daily_s.max()), int(monthly_s.max())]
+    return out
+
+
+scales = {}
+dump_months("all", df)
+scales["all"] = scales_for(df)
 cats = []
 for i, name in enumerate(kat_order):
-    fn = f"cat_{i}.json"
-    sizes[fn] = dump(fn, df[df["kat2"] == name])
-    cats.append({"name": name, "n": int(kat_sum[name]), "file": fn})
+    key = f"c{i}"
+    sub = df[df["kat2"] == name]
+    dump_months(key, sub)
+    scales[key] = scales_for(sub)
+    cats.append({"name": name, "n": int(kat_sum[name]), "key": key})
 
 meta = {
     "days": [d.strftime("%Y-%m-%d") for d in dni],
@@ -206,6 +280,8 @@ meta = {
     "cats": cats,
     "grupy": GRUPY,
     "pory": PORY,
+    "format": FORMAT,
+    "scales": scales,
     "total": int(df["n"].sum()),
 }
 (OUT / "meta.json").write_text(json.dumps(meta, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
@@ -278,6 +354,9 @@ else:
 
 total_mb = (sum(sizes.values()) + (OUT / "meta.json").stat().st_size) / 1e6
 print(f"Dni: {len(dni)} | kody: {len(kody)} | kategorie: {len(cats)} | transakcje: {meta['total']:,}")
-print(f"Zapisano do {OUT}: łącznie {total_mb:.1f} MB (największy plik: {max(sizes.values()) / 1e6:.1f} MB)")
+n_files = len(list((OUT / "m").glob("*")))
+print(f"Zapisano do {OUT}: łącznie {total_mb:.1f} MB w {n_files} plikach miesięcznych "
+      f"(największy plik: {largest / 1e6:.2f} MB, format: {FORMAT})")
+print("Strona pobiera tylko wybrany miesiąc, więc liczy się rozmiar jednego pliku miesięcznego.")
 if total_mb > 80:
     print("UWAGA: dużo danych na Pages. Zmniejsz TOP_KAT, zawęź KOD_PREFIKSY albo podnieś MIN_N.")
