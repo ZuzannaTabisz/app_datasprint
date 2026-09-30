@@ -230,6 +230,7 @@
 const $ = id => document.getElementById(id);
 const DNI = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'];
 const fmt = n => n.toLocaleString('pl-PL');
+const fmtCount = n => (n < 30 ? '<30' : fmt(n));   // liczba transakcji mniejsza niż 30 jest pokazywana jako "<30" (ochrona małych liczb)
 
 let META, MD = null, CAT = 'all', timer = null, loading = false, goSeq = 0, EVENTS = [];   // MD = dane wybranego miesiąca dla kategorii CAT
 const MCACHE = {};                                   // klucz "kategoria|miesiąc" -> obietnica z danymi miesiąca
@@ -528,11 +529,11 @@ function render() {
   ptsLayer.clearLayers();
   if ($('showpts').checked) {
     pts.forEach(([c, v]) => L.circleMarker([META.codes[c].lat, META.codes[c].lon], { radius: 4, weight: 1 })
-      .bindTooltip(META.codes[c].k + ': ' + (amt ? fmtMoney(v) : fmt(v))).addTo(ptsLayer));
+      .bindTooltip(META.codes[c].k + ': ' + (amt ? fmtMoney(v) : fmtCount(v))).addTo(ptsLayer));
   }
 
   $('date').textContent = label;
-  $('total').textContent = amt ? fmtMoney(total) : fmt(total);
+  $('total').textContent = amt ? fmtMoney(total) : fmtCount(total);
   $('stats-k').textContent = amt ? 'Łączna kwota' : 'Transakcje';
   $('foot-txt').textContent = 'Kolor: log10 ' + (amt ? 'łącznej kwoty transakcji' : 'liczby transakcji') +
     ' w kodzie pocztowym. Promień plamy: wielkość obszaru kodu.';
@@ -875,8 +876,8 @@ function renderOsiedle(label) {
   body.appendChild(el('div', 'os-sub', catName + ' · ' + osLabel));
 
   const money = v => v.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  body.appendChild(metric('Liczba transakcji', fmt(Math.round(N)), (N - meanN) / meanN * 100,
-    'Średnia na osiedle: ' + fmt(Math.round(meanN))));
+  body.appendChild(metric('Liczba transakcji', fmtCount(Math.round(N)), (N - meanN) / meanN * 100,
+    'Średnia na osiedle: ' + fmtCount(Math.round(meanN))));
 
   if (MD.S) {
     const avgOs = N > 0 ? S / N : NaN, avgAll = totN > 0 ? totS / totN : NaN;
@@ -995,7 +996,7 @@ async function init() {
 
   $('month').innerHTML = months.map((m, i) => '<option value="' + i + '">' + m + '</option>').join('');
   $('cat').innerHTML = '<option value="all">Wszystkie kategorie (' + fmt(META.total) + ')</option>' +
-    META.cats.map(c => '<option value="' + c.key + '">' + c.name + ' (' + fmt(c.n) + ')</option>').join('');
+    META.cats.map(c => '<option value="' + c.key + '">' + c.name + ' (' + fmtCount(c.n) + ')</option>').join('');
 
   buildFilters();
   await loadOsiedla();
