@@ -2,7 +2,7 @@
 
 Agreguje transakcje do postaci: dzień x kod pocztowy x kategoria sprzedawcy (liczba transakcji)
 i zapisuje jako małe pliki JSON w docs/data/. Strona (docs/index.html) tylko je wczytuje,
-więc 64 mln rekordów NIE trafia do przeglądarki: tylko agregaty.
+więc 64 mln rekordów nie trafia do przeglądarki: tylko agregaty.
 
 Wszystkie pliki wejściowe leżą w tym samym folderze co skrypt (app/):
     poznan_dataset_mini.parquet   mniejszy zbiór (szybki test)
