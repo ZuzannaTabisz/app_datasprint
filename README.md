@@ -1,9 +1,10 @@
 # Mapa transakcji kartowych w Poznaniu
-## English below :)
+## [English below :)](#card-transactions-map-of-poznań)
 
 Interaktywna mapa (strona statyczna, działa na GitHub Pages), która pokazuje, **ile i gdzie w Poznaniu zostawiają pieniędzy różne grupy osób**: mieszkańcy Poznania, mieszkańcy obwarzanka, obcokrajowcy i osoby spoza metropolii. Dane pochodzą z syntetycznych, zanonimizowanych transakcji kartowych (hackathon DataSprint, Visa; kwoty w fikcyjnej walucie).
 
 Strona: https://zuzannatabisz.github.io/app_datasprint/
+Wideo z prezentacją: https://youtu.be/PpBBMPBr2LY
 
 > [!TIP]
 > ## 👉 [OTWÓRZ APLIKACJĘ](https://zuzannatabisz.github.io/app_datasprint/)
@@ -11,20 +12,20 @@ Strona: https://zuzannatabisz.github.io/app_datasprint/
 > **Wybierz osiedle** i sprawdź, ile pieniędzy trafia do danej okolicy.
 
 ## Co potrafi aplikacja
-- **Baner z kwotą wydatków na terenie Poznania**.
+- **Baner z kwotą:** „X zostawili w Poznaniu + Y” dla wybranych filtrów oraz największa kategoria wydatków z jej udziałem.
 - **Heatmapa kodów pocztowych** rysowana wg **łącznej kwoty** (domyślnie) albo **liczby transakcji**. Promień plamy zależy od powierzchni kodu, kolor od kategorii (jasny = mało, ciemny = dużo).
 - **Filtry:** kategoria (kategorie zagregowane), osiedle, grupa (wybór wielokrotny, dwuklik = tylko ta grupa), pora dnia (dzień 8–17 / wieczór-noc 18–7).
 - **Oś czasu:** przełącznik per miesiąc / per dzień, strzałki, suwak dni, Play.
 - **Osiedla:** 42 osiedla, wybór kliknięciem albo z listy. Karta pokazuje liczbę transakcji i średnią kwotę transakcji względem średniej (zielone „+”, czerwone „−”).
 - **Wydarzenia w Poznaniu** z kwotą „dodatkowe wydatki ponad zwykły dzień” dla wybranych filtrów.
-- Liczby transakcji poniżej 30 są pokazywane jako „<30” w celu zapewnienia zgodności z wymaganiami.
+- Liczby transakcji poniżej 30 są pokazywane jako „<30” (ochrona małych liczb, przybliżenie wymogu 30 kart; patrz sekcja Compliance).
 
 ## Stack
 | Warstwa | Technologie |
 |---|---|
 | Dane źródłowe | Parquet, słownik kolumn w Excelu (dane przekazane przez organizatorów) |
 | Przetwarzanie | **Python 3.12**, **DuckDB** (agregacja bez ładowania pliku do RAM), **pandas**, **numpy**, **shapely** (przeliczenie kodów pocztowych na osiedla), `gzip`/`struct` (format binarny) |
-| Środowisko | conda (`datasprint`) |
+| Środowisko | conda (`datasprint`, plik `environment.yaml`) |
 | Dane geograficzne | GeoJSON: kody pocztowe (`kody.json`), osiedla (`osiedla.json`) |
 | Frontend | HTML + CSS + JavaScript bez frameworka, **Leaflet 1.9.4**, własny renderer heatmapy na `canvas`, kafelki **Esri World Light Gray** |
 | Format danych na stronie | miesięczne pliki `.bin` (gzip, tablice typowane) albo `.json` (awaryjnie) |
@@ -96,44 +97,64 @@ Karta osiedla i heatmapa używają kodu pocztowego **sprzedawcy** (gdzie zapłac
 ## Compliance (wymogi regulacyjne wyzwania)
 Wymogi z opisu wyzwania: (1) brak możliwości identyfikacji pojedynczych osób, czyli analizy i prezentacje tylko na grupach obejmujących **co najmniej 30 kart**; (2) każda grupa porównawcza obejmuje **co najmniej 3 podmioty/graczy**, a udział żadnego z nich nie przekracza **75%** grupy. Rozwiązanie nie może umożliwiać identyfikacji pojedynczych użytkowników, kart, transakcji ani podmiotów.
 
-### Dostosowanie do wymogów
+### Zastosowane środki
 - **Tylko agregaty.** Na stronę trafiają wyłącznie sumy i liczby dla komórek *dzień × kod pocztowy × kategoria × grupa analizy × pora dnia*. Nie publikujemy numerów kart (`pymt_crd_acct_num_raw` nie jest używany w eksporcie), nazw sprzedawców (`mrch_nm_raw`), pojedynczych transakcji ani godzin z dokładnością do minut. Przeglądarka nie dostaje surowych rekordów.
 - **Wyniki dla grup, nie dla osób.** Prezentowane są kody pocztowe, osiedla, kategorie i grupy (Poznań, obwarzanek, obcokrajowcy, poza metropolią), a nie użytkownicy.
 - **Maskowanie małych liczb w interfejsie.** Liczba transakcji poniżej 30 jest pokazywana jako „<30” (okno statystyk, punkty kodów, karta osiedla, lista kategorii).
 - **Parametr `MIN_N`** w `export_data.py` pozwala usunąć z publikowanych plików komórki z mniejszą liczbą transakcji.
 
+### Stan spełnienia wymogów
+Prototyp **nie egzekwuje jeszcze w pełni progów**:
+- maskowanie „<30” dotyczy liczby **transakcji**, a nie **kart** (jest przybliżeniem wymogu 30 kart, eksport nie liczy unikalnych kart),
+- małe komórki nie są jeszcze usuwane z publikowanych plików (`MIN_N = 1`), a maskowanie działa tylko w interfejsie,
+- warunek min. 3 podmiotów i maksymalnie 75% udziału jednego z nich nie jest jeszcze sprawdzany.
+
+Egzekwowanie progów na etapie eksportu (liczenie unikalnych kart i sprzedawców, usuwanie komórek poniżej progów) jest kolejnym krokiem rozwoju przed ewentualnym wdrożeniem.
+
+## Źródła danych i atrybucja
+- **Transakcje:** syntetyczne dane transakcyjne Visa, udostępnione przez organizatorów hackathonu DataSprint.
+- **Osiedla (GeoJSON):** dane publiczne Smart City Poznań.
+- **Wydarzenia:** kalendarium grupy MTP / badam.poznan.pl / Platforma Otwartych Danych Poznania.
+- **Kody pocztowe (GeoJSON):** *źródło do uzupełnienia*.
+- **Mapa podkładowa:** kafelki Esri World Light Gray, biblioteka Leaflet.
+
 ## Uruchomienie
-Pliki wejściowe leżą w folderze głównym (nie trafiają do repozytorium: `*.parquet` jest w `.gitignore`):
-`poznan_dataset_mini.parquet`, `poznan_dataset.parquet`, `kody.json`, `osiedla.json`, `duze_wydarzenia*.csv`.
+Aby tylko obejrzeć aplikację, wystarczy otworzyć link do strony: gotowe dane są w folderze `docs/data`, a pliki Parquet nie są potrzebne.
+
+Aby wygenerować dane od nowa, potrzebne są pliki Parquet, których **nie ma w repozytorium** (`*.parquet` jest w `.gitignore`). Umieść je w głównym folderze repozytorium: `poznan_dataset_mini.parquet` (szybki test) i/lub `poznan_dataset.parquet` (pełny zbiór, do publikacji). Pliki `kody.json`, `osiedla.json` i `duze_wydarzenia*.csv` są w repozytorium.
 
 ### 1. Wygeneruj dane
 ```
+git clone https://github.com/ZuzannaTabisz/app_datasprint
+cd app_datasprint
+conda env create -f environment.yaml
 conda activate datasprint
-conda install -y -c conda-forge shapely
-cd app
 python export_data.py --dataset mini
 ```
-`--dataset full` używa pełnego zbioru, `--parquet ŚCIEŻKA` dowolnego pliku. Ustawienia na górze `export_data.py`: `DATASET`, `KOD_PREFIKSY`, `KATEGORIE` (`glowne` lub `szczegolowe`), `FORMAT` (`bin` lub `json`), `MIN_N`. Skrypt wypisuje rozmiar wyników i największego pliku miesięcznego.
+`--dataset mini` to mniejszy zbiór do szybkiego testu, `--dataset full` to pełny zbiór (tak generujemy dane do publikacji), a `--parquet ŚCIEŻKA` wskazuje dowolny plik. Ustawienia na górze `export_data.py`: `DATASET`, `KOD_PREFIKSY`, `KATEGORIE` (`glowne` lub `szczegolowe`), `FORMAT` (`bin` lub `json`), `MIN_N`. Skrypt wypisuje rozmiar wyników i największego pliku miesięcznego.
 
 ### 2. Sprawdź lokalnie
-Uuruchom serwer:
+Uruchom serwer:
 ```
 cd docs
 python -m http.server 8000
 ```
 i otwórz http://localhost:8000
 
-### 3. Strona opublikuowana na GitHub Pages
+### 3. Strona opublikowana na GitHub Pages
 ```
 https://zuzannatabisz.github.io/app_datasprint/index.html
 ```
 
+---
 
 # Card Transactions Map of Poznań
+## [Polska wersja powyżej](#mapa-transakcji-kartowych-w-poznaniu)
 
 An interactive map (static site, hosted on GitHub Pages) showing **how much money different groups of people leave in Poznań, and where**: Poznań residents, residents of the "obwarzanek" (the ring of municipalities around Poznań), foreigners, and people from outside the metropolitan area. The data comes from synthetic, anonymized card transactions (DataSprint hackathon, Visa; amounts are in a fictional currency).
 
 Website: https://zuzannatabisz.github.io/app_datasprint/
+Presentation video: https://youtu.be/PpBBMPBr2LY
 
 > [!TIP]
 > ## 👉 [OPEN THE APP](https://zuzannatabisz.github.io/app_datasprint/)
@@ -141,20 +162,20 @@ Website: https://zuzannatabisz.github.io/app_datasprint/
 > **Select a district** and see how much money flows into that area.
 
 ## What the app can do
-- **A headline banner** with the amount spent within Poznań.
+- **A headline banner:** "X left in Poznań + Y" for the selected filters, plus the largest spending category with its share.
 - **A postal-code heatmap** drawn by **total amount** (default) or **number of transactions**. The size of each blob depends on the area of the postal code, and the color depends on the category (light = low, dark = high).
 - **Filters:** category (aggregated categories), district, group (multi-select; double-click = only that group), time of day (day 8–17 / evening–night 18–7).
 - **Timeline:** per month / per day switch, arrows, day slider, Play.
 - **Districts:** 42 districts, selectable by clicking on the map or from a list. The card shows the number of transactions and the average transaction amount compared with the average (green "+", red "−").
 - **Events in Poznań** with the amount of "additional spending above a regular day" for the selected filters.
-- Transaction counts below 30 are shown as "<30" to comply with the requirements.
+- Transaction counts below 30 are shown as "<30" (small-number protection, an approximation of the 30-card requirement; see the Compliance section).
 
 ## Stack
 | Layer | Technologies |
 |---|---|
 | Source data | Parquet, column dictionary in Excel (data provided by the organizers) |
 | Processing | **Python 3.12**, **DuckDB** (aggregation without loading the file into RAM), **pandas**, **numpy**, **shapely** (converting postal codes to districts), `gzip`/`struct` (binary format) |
-| Environment | conda (`datasprint`) |
+| Environment | conda (`datasprint`, `environment.yaml` file) |
 | Geographic data | GeoJSON: postal codes (`kody.json`), districts (`osiedla.json`) |
 | Frontend | HTML + CSS + JavaScript without a framework, **Leaflet 1.9.4**, custom `canvas` heatmap renderer, **Esri World Light Gray** tiles |
 | Data format on the site | monthly `.bin` files (gzip, typed arrays) or `.json` (fallback) |
@@ -226,24 +247,41 @@ The district card and the heatmap use the **merchant's** postal code (where the 
 ## Compliance (regulatory requirements of the challenge)
 Requirements from the challenge description: (1) no possibility of identifying individuals, i.e. analyses and presentations only for groups of **at least 30 cards**; (2) each comparison group includes **at least 3 entities/players**, and no single one of them exceeds **75%** of the group. The solution must not allow identification of individual users, cards, transactions or entities.
 
-### Compliance measures
+### Measures applied
 - **Aggregates only.** Only sums and counts for cells of *day × postal code × category × analysis group × time of day* are published on the site. We do not publish card numbers (`pymt_crd_acct_num_raw` is not used in the export), merchant names (`mrch_nm_raw`), individual transactions, or times down to the minute. The browser does not receive raw records.
 - **Results for groups, not for individuals.** The presented units are postal codes, districts, categories and groups (Poznań, obwarzanek, foreigners, outside the metropolitan area), not users.
 - **Masking of small numbers in the interface.** A transaction count below 30 is shown as "<30" (statistics panel, code points, district card, category list).
 - **The `MIN_N` parameter** in `export_data.py` allows removing cells with a smaller number of transactions from the published files.
 
+### Compliance status
+The prototype **does not yet fully enforce the thresholds**:
+- the "<30" masking applies to the number of **transactions**, not **cards** (it is an approximation of the 30-card requirement; the export does not count unique cards),
+- small cells are not yet removed from the published files (`MIN_N = 1`), and masking works only in the interface,
+- the condition of at least 3 entities and at most 75% share for any one of them is not yet checked.
+
+Enforcing the thresholds at the export stage (counting unique cards and merchants, removing cells below the thresholds) is the next development step before any deployment.
+
+## Data sources and attribution
+- **Transactions:** synthetic Visa transaction data, provided by the organizers of the DataSprint hackathon.
+- **Districts (GeoJSON):** public data from Smart City Poznań.
+- **Events:** calendar of the MTP group / badam.poznan.pl / Poznań Open Data Platform.
+- **Postal codes (GeoJSON):** *source to be added*.
+- **Base map:** Esri World Light Gray tiles, Leaflet library.
+
 ## Running the project
-The input files are located in the main folder (they are not committed to the repository: `*.parquet` is in `.gitignore`):
-`poznan_dataset_mini.parquet`, `poznan_dataset.parquet`, `kody.json`, `osiedla.json`, `duze_wydarzenia*.csv`.
+To just view the app, open the site link: the ready-made data is in the `docs/data` folder and the Parquet files are not needed.
+
+To regenerate the data, you need the Parquet files, which are **not in the repository** (`*.parquet` is in `.gitignore`). Place them in the repository's main folder: `poznan_dataset_mini.parquet` (quick test) and/or `poznan_dataset.parquet` (full dataset, used for publication). The files `kody.json`, `osiedla.json` and `duze_wydarzenia*.csv` are in the repository.
 
 ### 1. Generate the data
 ```
+git clone https://github.com/ZuzannaTabisz/app_datasprint
+cd app_datasprint
+conda env create -f environment.yaml
 conda activate datasprint
-conda install -y -c conda-forge shapely
-cd app
 python export_data.py --dataset mini
 ```
-`--dataset full` uses the full dataset, `--parquet PATH` any other file. Settings at the top of `export_data.py`: `DATASET`, `KOD_PREFIKSY`, `KATEGORIE` (`glowne` or `szczegolowe`), `FORMAT` (`bin` or `json`), `MIN_N`. The script prints the size of the output and of the largest monthly file.
+`--dataset mini` is a smaller dataset for a quick test, `--dataset full` is the full dataset (this is how we generate the data for publication), and `--parquet PATH` points to any other file. Settings at the top of `export_data.py`: `DATASET`, `KOD_PREFIKSY`, `KATEGORIE` (`glowne` or `szczegolowe`), `FORMAT` (`bin` or `json`), `MIN_N`. The script prints the size of the output and of the largest monthly file.
 
 ### 2. Check locally
 Start a server:
