@@ -30,6 +30,7 @@ Wideo z prezentacją: https://youtu.be/PpBBMPBr2LY
 | Frontend | HTML + CSS + JavaScript bez frameworka, **Leaflet 1.9.4**, własny renderer heatmapy na `canvas`, kafelki **Esri World Light Gray** |
 | Format danych na stronie | miesięczne pliki `.bin` (gzip, tablice typowane) albo `.json` (awaryjnie) |
 | Hosting | **GitHub Pages** (folder `docs/`) |
+| Wizualizacja i plik HTML | Wizualizacja (mapa, heatmapa, karty) oraz plik `docs/index.html` powstały we **współpracy z Claude Code (AI, Anthropic)** |
 
 Przeglądarka nie dostaje surowych rekordów, tylko agregaty. Wymagana jest nowsza przeglądarka (Chrome/Edge 80+, Firefox 126+, Safari 16.4+: `DecompressionStream`, CSS `zoom`).
 
@@ -180,6 +181,7 @@ Presentation video: https://youtu.be/PpBBMPBr2LY
 | Frontend | HTML + CSS + JavaScript without a framework, **Leaflet 1.9.4**, custom `canvas` heatmap renderer, **Esri World Light Gray** tiles |
 | Data format on the site | monthly `.bin` files (gzip, typed arrays) or `.json` (fallback) |
 | Hosting | **GitHub Pages** (`docs/` folder) |
+| Visualization and HTML file | The visualization (map, heatmap, cards) and the `docs/index.html` file were created in **collaboration with Claude Code (AI, Anthropic)** |
 
 The browser does not receive raw records, only aggregates. A modern browser is required (Chrome/Edge 80+, Firefox 126+, Safari 16.4+: `DecompressionStream`, CSS `zoom`).
 
