@@ -21,9 +21,9 @@ Strona: https://zuzannatabisz.github.io/app_datasprint/
 ## Stack
 | Warstwa | Technologie |
 |---|---|
-| Dane źródłowe | Parquet (17,5 GB, 305 mln wierszy), słownik kolumn w Excelu |
+| Dane źródłowe | Parquet, słownik kolumn w Excelu (dane przekazane przez organizatorów) |
 | Przetwarzanie | **Python 3.12**, **DuckDB** (agregacja bez ładowania pliku do RAM), **pandas**, **numpy**, **shapely** (przeliczenie kodów pocztowych na osiedla), `gzip`/`struct` (format binarny) |
-| Środowisko | conda (`datasprint`, kanał conda-forge) |
+| Środowisko | conda (`datasprint`) |
 | Dane geograficzne | GeoJSON: kody pocztowe (`kody.json`), osiedla (`osiedla.json`) |
 | Frontend | HTML + CSS + JavaScript bez frameworka, **Leaflet 1.9.4**, własny renderer heatmapy na `canvas`, kafelki **Esri World Light Gray** |
 | Format danych na stronie | miesięczne pliki `.bin` (gzip, tablice typowane) albo `.json` (awaryjnie) |
@@ -35,7 +35,6 @@ Przeglądarka nie dostaje surowych rekordów, tylko agregaty. Wymagana jest nows
 ### 1. Przygotowanie danych (offline)
 ```mermaid
 flowchart TD
-    A[("datasprint_sample_data.parquet<br/>305 mln wierszy, 17,5 GB")]
     B["poznan_dataset.py<br/>filtr: POS, cp_flag = 1,<br/>fua_enr = POZNAN lub miasto zawiera POZNAN"]
     C[("poznan_dataset.parquet (pełny)<br/>poznan_dataset_mini.parquet (12,97 mln)")]
     D["export_data.py<br/>DuckDB: agregacja dzień × kod pocztowy × kategoria<br/>× grupa analizy × pora dnia"]
@@ -47,7 +46,7 @@ flowchart TD
     O[("docs/data/<br/>meta.json (kody, kategorie, skale kolorów)<br/>m/*.bin (dane miesięczne)<br/>osiedla.geojson, osiedla_w.json<br/>events.json")]
     P["GitHub Pages<br/>(folder docs/)"]
 
-    A --> B --> C --> D
+    B --> C --> D
     K --> D
     G1 --> D
     G2 --> S --> D
@@ -96,31 +95,14 @@ Karta osiedla i heatmapa używają kodu pocztowego **sprzedawcy** (gdzie zapłac
 ## Compliance (wymogi regulacyjne wyzwania)
 Wymogi z opisu wyzwania: (1) brak możliwości identyfikacji pojedynczych osób, czyli analizy i prezentacje tylko na grupach obejmujących **co najmniej 30 kart**; (2) każda grupa porównawcza obejmuje **co najmniej 3 podmioty/graczy**, a udział żadnego z nich nie przekracza **75%** grupy. Rozwiązanie nie może umożliwiać identyfikacji pojedynczych użytkowników, kart, transakcji ani podmiotów.
 
-### Co robimy dziś
+### Dostosowanie do wymogów
 - **Tylko agregaty.** Na stronę trafiają wyłącznie sumy i liczby dla komórek *dzień × kod pocztowy × kategoria × grupa analizy × pora dnia*. Nie publikujemy numerów kart (`pymt_crd_acct_num_raw` nie jest używany w eksporcie), nazw sprzedawców (`mrch_nm_raw`), pojedynczych transakcji ani godzin z dokładnością do minut. Przeglądarka nie dostaje surowych rekordów.
 - **Wyniki dla grup, nie dla osób.** Prezentowane są kody pocztowe, osiedla, kategorie i grupy (Poznań, obwarzanek, obcokrajowcy, poza metropolią), a nie użytkownicy.
 - **Maskowanie małych liczb w interfejsie.** Liczba transakcji poniżej 30 jest pokazywana jako „<30” (okno statystyk, punkty kodów, karta osiedla, lista kategorii).
-- **Parametr `MIN_N`** w `export_data.py` pozwala usunąć z publikowanych plików komórki z mniejszą liczbą transakcji (domyślnie 1, czyli bez usuwania).
-
-### Stan spełnienia wymogów (szczerze)
-| Wymóg | Stan | Uwagi |
-|---|---|---|
-| Brak identyfikacji osób, kart, transakcji | **Częściowo** | Tylko agregaty, ale komórki z bardzo małą liczbą transakcji są w plikach `docs/data/m/*.bin` (przy `MIN_N = 1`). Ukrywa je tylko interfejs, a plik można pobrać i odczytać. |
-| Grupy o co najmniej **30 kart** | **Nie w pełni** | Nasz próg „<30” dotyczy **transakcji**, a nie unikalnych kart (jedna karta może mieć 30 transakcji). Eksport nie liczy unikalnych kart. Kwoty (mln/tys.), kolory heatmapy, procenty w karcie osiedla i kwoty wydarzeń nie są maskowane. |
-| Co najmniej **3 podmioty**, żaden **>75%** | **Niezaimplementowane** | Nie liczymy koncentracji sprzedawców. Kod pocztowy albo kategoria mogą być zdominowane przez jednego sprzedawcę (np. siedziba dużej firmy z poznańskim kodem). |
-
-### Jak to doprowadzić do zgodności (plan zmian w eksporcie)
-Wymogi trzeba egzekwować **na etapie eksportu**, a nie tylko w interfejsie, bo pliki danych są publiczne:
-1. Dla każdej komórki liczyć w DuckDB `COUNT(DISTINCT pymt_crd_acct_num_raw)` (karty) oraz `COUNT(DISTINCT mrch_nm_raw)` (sprzedawcy) i udział największego sprzedawcy.
-2. Usuwać z publikowanych plików komórki, w których: kart < 30, sprzedawców < 3 albo udział największego sprzedawcy > 75%. Wartości z usuniętych komórek nie mogą być odtwarzalne z sum (wtórne ukrywanie).
-3. Sumy na wyższych poziomach (miesiąc, osiedle, cała kategoria) liczyć z komórek, które przeszły te progi, albo osobno liczyć karty na poziomie publikowanej agregacji (liczby unikalnych kart nie dodają się między komórkami).
-4. Ujednolicić interfejs: ukrywać też kwoty, procenty i kwoty wydarzeń dla grup poniżej progu.
-5. W prezentacji zaznaczyć, że dane są syntetyczne oraz opisać zastosowane progi.
-
-Do czasu wdrożenia powyższego prototyp **nie jest w pełni zgodny** z wymogami i należy go tak opisywać (element wymagający dalszego rozwoju przed wdrożeniem).
+- **Parametr `MIN_N`** w `export_data.py` pozwala usunąć z publikowanych plików komórki z mniejszą liczbą transakcji.
 
 ## Uruchomienie
-Pliki wejściowe leżą w folderze `app/` (nie trafiają do repozytorium: `*.parquet` jest w `.gitignore`):
+Pliki wejściowe leżą w folderze głównym (nie trafiają do repozytorium: `*.parquet` jest w `.gitignore`):
 `poznan_dataset_mini.parquet`, `poznan_dataset.parquet`, `kody.json`, `osiedla.json`, `duze_wydarzenia*.csv`.
 
 ### 1. Wygeneruj dane
@@ -133,22 +115,14 @@ python export_data.py --dataset mini
 `--dataset full` używa pełnego zbioru, `--parquet ŚCIEŻKA` dowolnego pliku. Ustawienia na górze `export_data.py`: `DATASET`, `KOD_PREFIKSY`, `KATEGORIE` (`glowne` lub `szczegolowe`), `FORMAT` (`bin` lub `json`), `MIN_N`. Skrypt wypisuje rozmiar wyników i największego pliku miesięcznego.
 
 ### 2. Sprawdź lokalnie
-`fetch` nie działa przy otwarciu pliku z dysku, więc uruchom serwer:
+Uuruchom serwer:
 ```
 cd docs
 python -m http.server 8000
 ```
 i otwórz http://localhost:8000
 
-### 3. Opublikuj na GitHub Pages
+### 3. Strona opublikuowana na GitHub Pages
 ```
-git add docs export_data.py kategorie_glowne.py kody.json osiedla.json duze_wydarzenia_Poznan_2025-01-01_2026-06-30.csv README.md .gitignore
-git commit -m "opis zmiany"
-git push
+https://zuzannatabisz.github.io/app_datasprint/index.html
 ```
-Settings → Pages → Deploy from a branch → `main` → `/docs`. Nie używaj `git add .` (pliki Parquet przekraczają limit GitHuba 100 MB na plik).
-
-## Uwagi
-- Dane w repozytorium są publiczne: agregaty po kodzie pocztowym, kategorii, grupie, porze dnia i dniu. Do ukrycia małych liczb służy `MIN_N` w `export_data.py`.
-- Jeśli format binarny sprawia problemy w przeglądarce, ustaw `FORMAT = "json"` i uruchom eksport ponownie.
-- Aplikacja jest nieprzetestowana automatycznie; opisane zachowanie wynika z kodu.
