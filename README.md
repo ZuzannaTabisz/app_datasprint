@@ -18,7 +18,7 @@ Wideo z prezentacją: https://youtu.be/PpBBMPBr2LY
 - **Filtry:** kategoria (kategorie zagregowane), osiedle, grupa (wybór wielokrotny, dwuklik = tylko ta grupa), pora dnia (dzień 8–17 / wieczór-noc 18–7).
 - **Oś czasu:** przełącznik per miesiąc / per dzień, strzałki, suwak dni, Play.
 - **Osiedla:** 42 osiedla, wybór kliknięciem albo z listy. Karta pokazuje liczbę transakcji i średnią kwotę transakcji względem średniej (zielone „+”, czerwone „−”).
-- **Wydarzenia w Poznaniu** z kwotą „dodatkowe wydatki ponad zwykły dzień” dla wybranych filtrów.
+- **Wydarzenia w Poznaniu** z kwotą „dodatkowe wydatki ponad zwykły dzień w miesiącu” dla wybranych filtrów.
 - Liczby transakcji poniżej 30 są pokazywane jako „<30” (ochrona małych liczb, przybliżenie wymogu 30 kart; patrz sekcja Compliance).
 
 ## Plan prac: od danych do wniosków
