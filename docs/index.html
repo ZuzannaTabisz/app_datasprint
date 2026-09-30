@@ -21,8 +21,11 @@
   .card { position: absolute; z-index: 1000; background: var(--card); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
           border: 1px solid rgba(15, 23, 42, .06); border-radius: 16px; box-shadow: var(--shadow); }
   /* lewa kolumna: filtry u góry, pod nimi lista wydarzeń */
+  /* skalowanie interfejsu do okna: skrypt na dole ustawia --ui (współczynnik) oraz --avw / --avh (dostępna szerokość i wysokość
+     we współrzędnych po skalowaniu). Dzięki temu na małym oknie lub przy dużym powiększeniu systemowym karty się nie nakładają. */
+  #left, #side, #bottom { zoom: var(--ui, 1); }
   #left { position: absolute; top: 14px; left: 14px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-start;
-          gap: 12px; max-width: calc(100vw - 300px); }
+          gap: 12px; max-width: calc(var(--avw, 1600) * 1px - 380px); }
   #left .card { position: relative; }
   /* kontenery kolumn są niewidoczne i zajmują też puste miejsce obok węższych kart: nie mogą przechwytywać myszy,
      bo blokowałyby przeciąganie mapy i pokazywały strzałkę zamiast łapki; reagują tylko same karty */
@@ -47,7 +50,7 @@
   #stats .chk { margin-top: 12px; }
   .foot { margin-top: 10px; color: var(--muted); font-size: 11px; }
 
-  #bottom { left: 14px; right: 64px; bottom: 14px; padding: 12px 16px; }
+  #bottom { left: 14px; right: calc(70px / var(--ui, 1)); bottom: 14px; padding: 12px 16px; }
   .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   #date { font-weight: 600; min-width: 190px; font-variant-numeric: tabular-nums; }
   #day { flex: 1; min-width: 160px; }
@@ -70,7 +73,7 @@
 
   /* wydarzenia: każde w osobnym wierszu */
   /* wysokość dopasowuje się do liczby wydarzeń; przy większej liczbie (lub małym ekranie) lista się przewija */
-  #events { max-height: max(220px, min(560px, calc(100vh - 400px))); overflow-x: hidden; overflow-y: auto; scrollbar-gutter: stable; }
+  #events { max-height: max(120px, min(560px, calc(var(--avh, 900) * 1px - 600px))); overflow-x: hidden; overflow-y: auto; scrollbar-gutter: stable; }
   .ev-head { font-weight: 600; }
   .ev-sub { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
   .ev-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -85,7 +88,7 @@
 
   /* nagłówek: ile zostawiła wybrana grupa w Poznaniu */
   /* baner z kwotą: główny punkt całej strony, tak samo szeroki jak karta z filtrami */
-  #headline { align-self: stretch; padding: 22px 30px; display: grid; grid-template-columns: auto auto; justify-content: start; gap: 56px; align-items: center;
+  #headline { align-self: stretch; padding: 22px 30px; display: flex; flex-wrap: wrap; gap: 20px 56px; align-items: center;
               background: linear-gradient(100deg, #ecfdf3 0%, rgba(255, 255, 255, .95) 55%); border: 1px solid #bbf7d0; }
   .hl-line { display: flex; align-items: baseline; gap: 22px; flex-wrap: wrap; }      /* zdanie w jednej linii: "Wszyscy zostawili w Poznaniu + 210 mln" */
   #hl-title { color: #0f172a; font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
@@ -112,7 +115,7 @@
 
   /* prawa kolumna: statystyki + karta wybranego osiedla */
   #side { position: absolute; top: 14px; right: 14px; width: 330px; font-size: 15px; z-index: 1000; display: flex; flex-direction: column; gap: 12px;
-          max-height: calc(100vh - 300px); overflow-y: auto; }
+          max-height: calc(var(--avh, 900) * 1px - 140px); overflow-y: auto; }
   #side .card { position: relative; top: auto; right: auto; width: auto; }
   #osiedle { display: none; padding: 14px 16px; }
   .os-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
@@ -231,6 +234,20 @@ let META, MD = null, CAT = 'all', timer = null, loading = false, goSeq = 0, EVEN
 const MCACHE = {};                                   // klucz "kategoria|miesiąc" -> obietnica z danymi miesiąca
 const months = [], dayMonth = [], monthStart = [], monthLen = [];
 const state = { m: 0, dd: 0, whole: true };   // domyślnie suma miesiąca = widok jak w mapie Folium
+
+// --- skalowanie interfejsu do rozmiaru okna ---
+// Projekt zakłada okno co najmniej ok. 1500 x 820 px (skala 1). W mniejszym oknie (albo przy dużym powiększeniu systemowym)
+// karty są zmniejszane (do 60%), a --avw / --avh to wymiary okna we współrzędnych po skalowaniu. Na telefonach (poniżej 760 px) bez skalowania.
+function fitUI() {
+  const w = window.innerWidth, h = window.innerHeight;
+  const s = w < 760 ? 1 : Math.max(0.6, Math.min(1, w / 1500, h / 820));
+  const st = document.documentElement.style;
+  st.setProperty('--ui', s.toFixed(3));
+  st.setProperty('--avw', Math.round(w / s));
+  st.setProperty('--avh', Math.round(h / s));
+}
+window.addEventListener('resize', fitUI);
+fitUI();
 
 // --- mapa ---
 const map = L.map('map', { zoomControl: false }).setView([52.41, 16.93], 11);
