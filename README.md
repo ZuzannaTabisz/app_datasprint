@@ -20,6 +20,47 @@ Wideo z prezentacją: https://youtu.be/PpBBMPBr2LY
 - **Wydarzenia w Poznaniu** z kwotą „dodatkowe wydatki ponad zwykły dzień” dla wybranych filtrów.
 - Liczby transakcji poniżej 30 są pokazywane jako „<30” (ochrona małych liczb, przybliżenie wymogu 30 kart; patrz sekcja Compliance).
 
+## Plan prac: od danych do wniosków
+W analizie danych często ważniejsza od pierwotnie założonego celu jest droga, którą przechodzimy: kolejne warstwy informacji, odkrywane zależności i fakty mogą istotnie zmienić kierunek projektu.
+
+```mermaid
+%%{init: {"themeVariables": {"fontSize": "18px"}}}%%
+pie showData
+    title Etapy projektu, 24 h łącznie
+    "1. Definicja kontekstów biznesowych (1 h)" : 1
+    "2. Selekcja, redukcja i przygotowanie danych (5 h)" : 5
+    "3. Budowa analiz i aplikacji (10 h)" : 10
+    "4. Synteza i przygotowanie rekomendacji (4 h)" : 4
+    "5. Przygotowanie prezentacji (4 h)" : 4
+```
+
+### 1. Definicja kontekstów biznesowych (1 h)
+- Zidentyfikowaliśmy kluczowe potrzeby Smart City Poznań oraz możliwe zastosowania danych Visa.
+- Skupiliśmy się m.in. na wyzwaniach demograficznych, wpływie mieszkańców gmin ościennych („obwarzanka”) na gospodarkę Poznania oraz analizie wydarzeń miejskich.
+- Postawiliśmy pytanie: jak dane transakcyjne Visa można połączyć z danymi, którymi już dysponuje miasto?
+
+### 2. Selekcja, redukcja i przygotowanie danych (5 h)
+- Przeanalizowaliśmy duży i mały zbiór danych Visa, wybierając kolumny oraz warunki brzegowe istotne dla celów biznesowych (patrz sekcja „Jak ograniczyliśmy dane z pełnego pliku”).
+- Wyselekcjonowane dane wzbogaciliśmy o zasoby Smart City Poznań, m.in. geograficzne i dotyczące wydarzeń.
+- Oczyściliśmy dane oraz ujednoliciliśmy środowisko pracy.
+
+### 3. Budowa analiz i aplikacji (10 h)
+- Analizowaliśmy transakcje kartowe realizowane fizycznie u merchantów, w podziale na Poznań i gminy przyległe.
+- Tworzyliśmy podsumowania i wizualizacje, stopniowo wzbogacając dane o kolejne perspektywy analityczne.
+- Rozwiązanie skoncentrowaliśmy na Poznaniu, ale zaprojektowaliśmy je w sposób umożliwiający skalowanie na inne miasta i obszary.
+
+### 4. Synteza i przygotowanie rekomendacji (4 h)
+- Zebraliśmy wnioski, oceniliśmy skalowalność rozwiązania i określiliśmy możliwe kolejne kroki.
+
+### 5. Przygotowanie prezentacji (4 h)
+- Przygotowaliśmy prezentację podsumowującą projekt.
+
+### Kluczowe wnioski
+- Dane transakcyjne mogą wspierać miasto w kształtowaniu celów i polityk miejskich, a nie tylko w ocenie już wdrożonych działań.
+- Największą wartość daje łączenie danych miejskich z zewnętrznymi źródłami, takimi jak dane Visa, geografia czy informacje o wydarzeniach.
+- Analiza pozwala lepiej rozumieć relacje gospodarcze między Poznaniem a gminami ościennymi oraz wpływ wydarzeń na aktywność ekonomiczną miasta.
+- Wypracowane podejście jest skalowalne: może zostać zastosowane w innych miastach, dla innych kategorii merchantów i kolejnych problemów miejskich.
+
 ## Stack
 | Warstwa | Technologie |
 |---|---|
@@ -37,6 +78,7 @@ Przeglądarka nie dostaje surowych rekordów, tylko agregaty. Wymagana jest nows
 ## Pipeline
 ### 1. Przygotowanie danych (offline)
 ```mermaid
+%%{init: {"themeVariables": {"fontSize": "22px"}, "flowchart": {"nodeSpacing": 55, "rankSpacing": 75, "padding": 28, "useMaxWidth": false}}}%%
 flowchart TD
     B["poznan_dataset.py<br/>filtr: POS, cp_flag = 1,<br/>fua_enr = POZNAN lub miasto zawiera POZNAN"]
     C[("poznan_dataset.parquet (pełny)<br/>poznan_dataset_mini.parquet (12,97 mln)")]
@@ -59,6 +101,7 @@ flowchart TD
 
 ### 2. Działanie w przeglądarce
 ```mermaid
+%%{init: {"themeVariables": {"fontSize": "22px"}, "flowchart": {"nodeSpacing": 55, "rankSpacing": 75, "padding": 28, "useMaxWidth": false}}}%%
 flowchart LR
     U["Użytkownik:<br/>kategoria, miesiąc/dzień,<br/>grupa, pora dnia, osiedle"]
     M["meta.json<br/>(kody, kategorie, skale)"]
@@ -197,6 +240,47 @@ Presentation video: https://youtu.be/PpBBMPBr2LY
 - **Events in Poznań** with the amount of "additional spending above a regular day" for the selected filters.
 - Transaction counts below 30 are shown as "<30" (small-number protection, an approximation of the 30-card requirement; see the Compliance section).
 
+## Work plan: from data to insights
+In data analysis, the path we take is often more important than the originally assumed goal: successive layers of information, discovered relationships and facts can significantly change the direction of a project.
+
+```mermaid
+%%{init: {"themeVariables": {"fontSize": "18px"}}}%%
+pie showData
+    title Project stages, 24 h in total
+    "1. Defining business contexts (1 h)" : 1
+    "2. Data selection, reduction and preparation (5 h)" : 5
+    "3. Building analyses and the application (10 h)" : 10
+    "4. Synthesis and preparing recommendations (4 h)" : 4
+    "5. Preparing the presentation (4 h)" : 4
+```
+
+### 1. Defining business contexts (1 h)
+- We identified the key needs of Smart City Poznań and possible uses of Visa data.
+- We focused, among other things, on demographic challenges, the impact of residents of neighboring municipalities (the "obwarzanek") on Poznań's economy, and the analysis of city events.
+- We asked the question: how can Visa transaction data be combined with the data the city already has?
+
+### 2. Data selection, reduction and preparation (5 h)
+- We analyzed the large and the small Visa dataset, selecting the columns and boundary conditions relevant to the business goals (see the section "How we reduced the full dataset").
+- We enriched the selected data with Smart City Poznań resources, including geographic and event data.
+- We cleaned the data and unified the working environment.
+
+### 3. Building analyses and the application (10 h)
+- We analyzed card transactions made in person at merchants, split into Poznań and neighboring municipalities.
+- We created summaries and visualizations, gradually enriching the data with further analytical perspectives.
+- We focused the solution on Poznań, but designed it so that it can be scaled to other cities and areas.
+
+### 4. Synthesis and preparing recommendations (4 h)
+- We collected the conclusions, assessed the scalability of the solution and defined possible next steps.
+
+### 5. Preparing the presentation (4 h)
+- We prepared a presentation summarizing the project.
+
+### Key takeaways
+- Transaction data can support the city in shaping urban goals and policies, not only in evaluating measures that have already been implemented.
+- The greatest value comes from combining city data with external sources such as Visa data, geography and event information.
+- The analysis helps to better understand the economic relations between Poznań and the neighboring municipalities, and the impact of events on the city's economic activity.
+- The approach is scalable: it can be applied in other cities, for other merchant categories and for further urban problems.
+
 ## Stack
 | Layer | Technologies |
 |---|---|
@@ -214,6 +298,7 @@ The browser does not receive raw records, only aggregates. A modern browser is r
 ## Pipeline
 ### 1. Data preparation (offline)
 ```mermaid
+%%{init: {"themeVariables": {"fontSize": "22px"}, "flowchart": {"nodeSpacing": 55, "rankSpacing": 75, "padding": 28, "useMaxWidth": false}}}%%
 flowchart TD
     B["poznan_dataset.py<br/>filter: POS, cp_flag = 1,<br/>fua_enr = POZNAN or city contains POZNAN"]
     C[("poznan_dataset.parquet (full)<br/>poznan_dataset_mini.parquet (12.97 M)")]
@@ -236,6 +321,7 @@ flowchart TD
 
 ### 2. How it works in the browser
 ```mermaid
+%%{init: {"themeVariables": {"fontSize": "22px"}, "flowchart": {"nodeSpacing": 55, "rankSpacing": 75, "padding": 28, "useMaxWidth": false}}}%%
 flowchart LR
     U["User:<br/>category, month/day,<br/>group, time of day, district"]
     M["meta.json<br/>(codes, categories, scales)"]
