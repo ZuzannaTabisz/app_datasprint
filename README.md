@@ -13,7 +13,7 @@ Wideo z prezentacją: https://youtu.be/PpBBMPBr2LY
 > **Wybierz osiedle** i sprawdź, ile pieniędzy trafia do danej okolicy.
 
 ## Co potrafi aplikacja
-- **Baner z kwotą:** „X zostawili w Poznaniu + Y” dla wybranych filtrów oraz największa kategoria wydatków z jej udziałem.
+- **Baner z kwotą wydatków na obszarze Poznania**
 - **Heatmapa kodów pocztowych** rysowana wg **łącznej kwoty** (domyślnie) albo **liczby transakcji**. Promień plamy zależy od powierzchni kodu, kolor od kategorii (jasny = mało, ciemny = dużo).
 - **Filtry:** kategoria (kategorie zagregowane), osiedle, grupa (wybór wielokrotny, dwuklik = tylko ta grupa), pora dnia (dzień 8–17 / wieczór-noc 18–7).
 - **Oś czasu:** przełącznik per miesiąc / per dzień, strzałki, suwak dni, Play.
@@ -219,8 +219,8 @@ https://zuzannatabisz.github.io/app_datasprint/index.html
 
 ---
 
-# Card Transactions Map of Poznań
-## [Polska wersja powyżej](#mapa-transakcji-kartowych-w-poznaniu)
+## How is spending distributed across the districts of Poznań?
+### [Polska wersja powyżej](#mapa-transakcji-kartowych-w-poznaniu)
 
 An interactive map (static site, hosted on GitHub Pages) showing **how much money different groups of people leave in Poznań, and where**: Poznań residents, residents of the "obwarzanek" (the ring of municipalities around Poznań), foreigners, and people from outside the metropolitan area. The data comes from synthetic, anonymized card transactions (DataSprint hackathon, Visa; amounts are in a fictional currency).
 
@@ -233,7 +233,7 @@ Presentation video: https://youtu.be/PpBBMPBr2LY
 > **Select a district** and see how much money flows into that area.
 
 ## What the app can do
-- **A headline banner:** "X left in Poznań + Y" for the selected filters, plus the largest spending category with its share.
+- **A headline banner of spendings in Poznań**
 - **A postal-code heatmap** drawn by **total amount** (default) or **number of transactions**. The size of each blob depends on the area of the postal code, and the color depends on the category (light = low, dark = high).
 - **Filters:** category (aggregated categories), district, group (multi-select; double-click = only that group), time of day (day 8–17 / evening–night 18–7).
 - **Timeline:** per month / per day switch, arrows, day slider, Play.
