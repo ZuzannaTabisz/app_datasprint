@@ -4,6 +4,11 @@ Interaktywna mapa (strona statyczna, działa na GitHub Pages), która pokazuje, 
 
 Strona: https://zuzannatabisz.github.io/app_datasprint/
 
+> [!TIP]
+> ## 👉 [OTWÓRZ APLIKACJĘ](https://zuzannatabisz.github.io/app_datasprint/)
+> **Naciśnij ▶ Play** i zobacz, jak dane zmieniają się w czasie.
+> **Wybierz osiedle** i sprawdź, ile pieniędzy trafia do danej okolicy.
+
 ## Co potrafi aplikacja
 - **Baner z kwotą:** „X zostawili w Poznaniu + Y” dla wybranych filtrów oraz największa kategoria wydatków z jej udziałem.
 - **Heatmapa kodów pocztowych** rysowana wg **łącznej kwoty** (domyślnie) albo **liczby transakcji**. Promień plamy zależy od powierzchni kodu, kolor od kategorii (jasny = mało, ciemny = dużo).
