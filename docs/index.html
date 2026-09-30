@@ -34,6 +34,7 @@
   /* karta filtrów i baner mają szerokość swojej zawartości (a nie całego ekranu) i są tak samo szerokie względem siebie */
   #top { align-self: stretch; padding: 12px 18px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
   .top-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  #headline, #top { zoom: 0.75; }                 /* baner z kwotą i karta filtrów o 25% mniejsze (mnoży się ze skalowaniem do okna) */
   #events-card { width: 440px; max-width: 100%; padding: 18px 20px; }
   #top h1 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; margin: 0; }
   .field { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
