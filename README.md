@@ -1,5 +1,6 @@
-# Mapa transakcji kartowych w Poznaniu
-## [English below :)](#card-transactions-map-of-poznań)
+# Tak nam się wydaje … na fyrtlach!
+## Jak rozkładają się wydatki w dzielnicach Poznania? ​
+### [English below :)](#card-transactions-map-of-poznań)
 
 Interaktywna mapa (strona statyczna, działa na GitHub Pages), która pokazuje, **ile i gdzie w Poznaniu zostawiają pieniędzy różne grupy osób**: mieszkańcy Poznania, mieszkańcy obwarzanka, obcokrajowcy i osoby spoza metropolii. Dane pochodzą z syntetycznych, zanonimizowanych transakcji kartowych (hackathon DataSprint, Visa; kwoty w fikcyjnej walucie).
 
