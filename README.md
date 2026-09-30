@@ -88,6 +88,32 @@ Karta osiedla i heatmapa używają kodu pocztowego **sprzedawcy** (gdzie zapłac
 - **Dodatkowe wydatki wydarzenia:** kwota z dni wydarzenia minus liczba dni × średnia dzienna kwota z dni tego samego miesiąca bez żadnego wydarzenia. To prosty szacunek, który nie uwzględnia dnia tygodnia ani świąt, i nie dowodzi związku przyczynowego.
 - **Największa kategoria** jest liczona po wszystkich kategoriach niezależnie od wyboru kategorii.
 
+## Compliance (wymogi regulacyjne wyzwania)
+Wymogi z opisu wyzwania: (1) brak możliwości identyfikacji pojedynczych osób, czyli analizy i prezentacje tylko na grupach obejmujących **co najmniej 30 kart**; (2) każda grupa porównawcza obejmuje **co najmniej 3 podmioty/graczy**, a udział żadnego z nich nie przekracza **75%** grupy. Rozwiązanie nie może umożliwiać identyfikacji pojedynczych użytkowników, kart, transakcji ani podmiotów.
+
+### Co robimy dziś
+- **Tylko agregaty.** Na stronę trafiają wyłącznie sumy i liczby dla komórek *dzień × kod pocztowy × kategoria × grupa analizy × pora dnia*. Nie publikujemy numerów kart (`pymt_crd_acct_num_raw` nie jest używany w eksporcie), nazw sprzedawców (`mrch_nm_raw`), pojedynczych transakcji ani godzin z dokładnością do minut. Przeglądarka nie dostaje surowych rekordów.
+- **Wyniki dla grup, nie dla osób.** Prezentowane są kody pocztowe, osiedla, kategorie i grupy (Poznań, obwarzanek, obcokrajowcy, poza metropolią), a nie użytkownicy.
+- **Maskowanie małych liczb w interfejsie.** Liczba transakcji poniżej 30 jest pokazywana jako „<30” (okno statystyk, punkty kodów, karta osiedla, lista kategorii).
+- **Parametr `MIN_N`** w `export_data.py` pozwala usunąć z publikowanych plików komórki z mniejszą liczbą transakcji (domyślnie 1, czyli bez usuwania).
+
+### Stan spełnienia wymogów (szczerze)
+| Wymóg | Stan | Uwagi |
+|---|---|---|
+| Brak identyfikacji osób, kart, transakcji | **Częściowo** | Tylko agregaty, ale komórki z bardzo małą liczbą transakcji są w plikach `docs/data/m/*.bin` (przy `MIN_N = 1`). Ukrywa je tylko interfejs, a plik można pobrać i odczytać. |
+| Grupy o co najmniej **30 kart** | **Nie w pełni** | Nasz próg „<30” dotyczy **transakcji**, a nie unikalnych kart (jedna karta może mieć 30 transakcji). Eksport nie liczy unikalnych kart. Kwoty (mln/tys.), kolory heatmapy, procenty w karcie osiedla i kwoty wydarzeń nie są maskowane. |
+| Co najmniej **3 podmioty**, żaden **>75%** | **Niezaimplementowane** | Nie liczymy koncentracji sprzedawców. Kod pocztowy albo kategoria mogą być zdominowane przez jednego sprzedawcę (np. siedziba dużej firmy z poznańskim kodem). |
+
+### Jak to doprowadzić do zgodności (plan zmian w eksporcie)
+Wymogi trzeba egzekwować **na etapie eksportu**, a nie tylko w interfejsie, bo pliki danych są publiczne:
+1. Dla każdej komórki liczyć w DuckDB `COUNT(DISTINCT pymt_crd_acct_num_raw)` (karty) oraz `COUNT(DISTINCT mrch_nm_raw)` (sprzedawcy) i udział największego sprzedawcy.
+2. Usuwać z publikowanych plików komórki, w których: kart < 30, sprzedawców < 3 albo udział największego sprzedawcy > 75%. Wartości z usuniętych komórek nie mogą być odtwarzalne z sum (wtórne ukrywanie).
+3. Sumy na wyższych poziomach (miesiąc, osiedle, cała kategoria) liczyć z komórek, które przeszły te progi, albo osobno liczyć karty na poziomie publikowanej agregacji (liczby unikalnych kart nie dodają się między komórkami).
+4. Ujednolicić interfejs: ukrywać też kwoty, procenty i kwoty wydarzeń dla grup poniżej progu.
+5. W prezentacji zaznaczyć, że dane są syntetyczne oraz opisać zastosowane progi.
+
+Do czasu wdrożenia powyższego prototyp **nie jest w pełni zgodny** z wymogami i należy go tak opisywać (element wymagający dalszego rozwoju przed wdrożeniem).
+
 ## Uruchomienie
 Pliki wejściowe leżą w folderze `app/` (nie trafiają do repozytorium: `*.parquet` jest w `.gitignore`):
 `poznan_dataset_mini.parquet`, `poznan_dataset.parquet`, `kody.json`, `osiedla.json`, `duze_wydarzenia*.csv`.
