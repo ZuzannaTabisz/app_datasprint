@@ -69,6 +69,7 @@ pie showData
 | Przetwarzanie | **Python 3.12**, **DuckDB** (agregacja bez ładowania pliku do RAM), **pandas**, **numpy**, **shapely** (przeliczenie kodów pocztowych na osiedla), `gzip`/`struct` (format binarny) |
 | Środowisko | conda (`datasprint`, plik `environment.yaml`) |
 | Dane geograficzne | GeoJSON: kody pocztowe (`kody.json`), osiedla (`osiedla.json`) |
+| Dane o wydarzeniach | Dane miejskie o wydarzeniach w Poznaniu (`duze_wydarzenia*.csv`), zebrane z pomocą sztucznej inteligencji na potrzeby prezentacji |
 | Frontend | HTML + CSS + JavaScript bez frameworka, **Leaflet 1.9.4**, własny renderer heatmapy na `canvas`, kafelki **Esri World Light Gray** |
 | Format danych na stronie | miesięczne pliki `.bin` (gzip, tablice typowane) albo `.json` (awaryjnie) |
 | Hosting | **GitHub Pages** (folder `docs/`) |
@@ -289,6 +290,7 @@ pie showData
 | Processing | **Python 3.12**, **DuckDB** (aggregation without loading the file into RAM), **pandas**, **numpy**, **shapely** (converting postal codes to districts), `gzip`/`struct` (binary format) |
 | Environment | conda (`datasprint`, `environment.yaml` file) |
 | Geographic data | GeoJSON: postal codes (`kody.json`), districts (`osiedla.json`) |
+| Event data | City data on events in Poznań (`duze_wydarzenia*.csv`), collected with the help of artificial intelligence for the purposes of the presentation |
 | Frontend | HTML + CSS + JavaScript without a framework, **Leaflet 1.9.4**, custom `canvas` heatmap renderer, **Esri World Light Gray** tiles |
 | Data format on the site | monthly `.bin` files (gzip, typed arrays) or `.json` (fallback) |
 | Hosting | **GitHub Pages** (`docs/` folder) |
