@@ -120,13 +120,13 @@ flowchart LR
 Strona ładuje tylko wybrany miesiąc (i w tle pozostałe kategorie tego miesiąca do policzenia największej kategorii), a skala kolorów jest wspólna dla wszystkich miesięcy dzięki maksimom wyliczonym w `export_data.py`.
 
 ## Jak ograniczyliśmy dane z pełnego pliku
-Pełny plik `datasprint_sample_data.parquet` ma **305 mln wierszy i 30 kolumn (17,5 GB)**. Do pracy nad aplikacją zawęziliśmy go jednym zapytaniem (DuckDB, bez ładowania pliku do pamięci) do zbioru dotyczącego Poznania:
+Do pracy nad aplikacją zawęziliśmy plik jednym zapytaniem (DuckDB, bez ładowania pliku do pamięci) do zbioru dotyczącego Poznania:
 
 ```sql
 SELECT pymt_crd_acct_num_raw, mrch_catg_nm, mrch_city_nm_raw, mrch_postal_code, mrch_ctry_nm,
        mrch_nm_raw, issr_ctry_cd, prch_dt, prch_mnth_id, tran_id_gmt_tm, cs_tran_amt,
        lau_enr, fua_enr, pstl_cd_enr
-FROM read_parquet('datasprint_sample_data.parquet')
+FROM read_parquet('datasprint_full_data.parquet')
 WHERE transaction_type = 'POS'
   AND cp_flag = 1
   AND (fua_enr = 'POZNAN' OR UPPER(TRIM(mrch_city_nm_raw)) LIKE '%POZNAN%')
@@ -341,13 +341,13 @@ flowchart LR
 The site loads only the selected month (and, in the background, the other categories of that month in order to compute the top category). The color scale is shared across all months thanks to the maximum values computed in `export_data.py`.
 
 ## How we reduced the full dataset
-The full file `datasprint_sample_data.parquet` has **305 million rows and 30 columns (17.5 GB)**. To work on the app, we narrowed it down with a single query (DuckDB, without loading the file into memory) to a dataset about Poznań:
+To work on the app, we narrowed the original file down with a single query (DuckDB, without loading the file into memory) to a dataset about Poznań:
 
 ```sql
 SELECT pymt_crd_acct_num_raw, mrch_catg_nm, mrch_city_nm_raw, mrch_postal_code, mrch_ctry_nm,
        mrch_nm_raw, issr_ctry_cd, prch_dt, prch_mnth_id, tran_id_gmt_tm, cs_tran_amt,
        lau_enr, fua_enr, pstl_cd_enr
-FROM read_parquet('datasprint_sample_data.parquet')
+FROM read_parquet('datasprint_full_data.parquet')
 WHERE transaction_type = 'POS'
   AND cp_flag = 1
   AND (fua_enr = 'POZNAN' OR UPPER(TRIM(mrch_city_nm_raw)) LIKE '%POZNAN%')
