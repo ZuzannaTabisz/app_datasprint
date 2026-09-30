@@ -10,13 +10,13 @@ Strona: https://zuzannatabisz.github.io/app_datasprint/
 > **Wybierz osiedle** i sprawdź, ile pieniędzy trafia do danej okolicy.
 
 ## Co potrafi aplikacja
-- **Baner z kwotą:** „X zostawili w Poznaniu + Y” dla wybranych filtrów oraz największa kategoria wydatków z jej udziałem.
+- **Baner z kwotą wydatków na terenie Poznania**.
 - **Heatmapa kodów pocztowych** rysowana wg **łącznej kwoty** (domyślnie) albo **liczby transakcji**. Promień plamy zależy od powierzchni kodu, kolor od kategorii (jasny = mało, ciemny = dużo).
 - **Filtry:** kategoria (kategorie zagregowane), osiedle, grupa (wybór wielokrotny, dwuklik = tylko ta grupa), pora dnia (dzień 8–17 / wieczór-noc 18–7).
 - **Oś czasu:** przełącznik per miesiąc / per dzień, strzałki, suwak dni, Play.
 - **Osiedla:** 42 osiedla, wybór kliknięciem albo z listy. Karta pokazuje liczbę transakcji i średnią kwotę transakcji względem średniej (zielone „+”, czerwone „−”).
 - **Wydarzenia w Poznaniu** z kwotą „dodatkowe wydatki ponad zwykły dzień” dla wybranych filtrów.
-- Liczby transakcji poniżej 30 są pokazywane jako „<30”.
+- Liczby transakcji poniżej 30 są pokazywane jako „<30” w celu zapewnienia zgodności z wymaganiami.
 
 ## Stack
 | Warstwa | Technologie |
