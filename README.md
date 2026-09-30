@@ -74,6 +74,32 @@ flowchart LR
 ```
 Strona ładuje tylko wybrany miesiąc (i w tle pozostałe kategorie tego miesiąca do policzenia największej kategorii), a skala kolorów jest wspólna dla wszystkich miesięcy dzięki maksimom wyliczonym w `export_data.py`.
 
+## Jak ograniczyliśmy dane z pełnego pliku
+Pełny plik `datasprint_sample_data.parquet` ma **305 mln wierszy i 30 kolumn (17,5 GB)**. Do pracy nad aplikacją zawęziliśmy go jednym zapytaniem (DuckDB, bez ładowania pliku do pamięci) do zbioru dotyczącego Poznania:
+
+```sql
+SELECT pymt_crd_acct_num_raw, mrch_catg_nm, mrch_city_nm_raw, mrch_postal_code, mrch_ctry_nm,
+       mrch_nm_raw, issr_ctry_cd, prch_dt, prch_mnth_id, tran_id_gmt_tm, cs_tran_amt,
+       lau_enr, fua_enr, pstl_cd_enr
+FROM read_parquet('datasprint_sample_data.parquet')
+WHERE transaction_type = 'POS'
+  AND cp_flag = 1
+  AND (fua_enr = 'POZNAN' OR UPPER(TRIM(mrch_city_nm_raw)) LIKE '%POZNAN%')
+```
+
+**Ograniczenie wierszy** (`WHERE`):
+- `transaction_type = 'POS'`: tylko płatności w terminalach (bez bankomatów).
+- `cp_flag = 1`: tylko płatności z fizyczną obecnością karty (bez płatności online i zdalnych).
+- `fua_enr = 'POZNAN'` **lub** miasto sprzedawcy zawiera `POZNAN`: transakcje kart przypisanych do obszaru miejskiego Poznania (gdziekolwiek płacili) oraz wszystkie transakcje u sprzedawców w Poznaniu (także kart spoza Poznania, np. turystów).
+
+**Ograniczenie kolumn:** z 30 kolumn zostawiliśmy 14 (lista w zapytaniu). Pominęliśmy m.in. identyfikator transakcji, segment karty, sposób odczytu karty, kod kategorii, region i kod kraju sprzedawcy, typ karty oraz kanał płatności.
+
+**Wynik:** ok. **64 mln wierszy** (`poznan_dataset.parquet`, pełny zbiór używany do publikacji). Plik `poznan_dataset_mini.parquet` (12,97 mln wierszy) to mniejszy zbiór do szybkich testów. Następnie `export_data.py` zawęża dane do sprzedawców w Polsce z poprawnym kodem pocztowym i agreguje je do postaci opisanej poniżej.
+
+**Ograniczenia tego podejścia:**
+- Uwzględniamy tylko płatności kartą fizyczną w terminalach: bez bankomatów, płatności online i zdalnych.
+- Miasto jest dopasowywane po tekście (`POZNAN`), więc zapisy ze skrótem lub literówką (np. „Pozna”, „Pozna?”) mogą zostać pominięte. Dodatkowo wybór po `fua_enr` obejmuje wszystkie transakcje mieszkańców obszaru Poznania, także te poza miastem.
+
 ## Z jakich kolumn korzysta eksport
 | Kolumna | Użycie |
 |---|---|
@@ -224,6 +250,32 @@ flowchart LR
     A --> W
 ```
 The site loads only the selected month (and, in the background, the other categories of that month in order to compute the top category). The color scale is shared across all months thanks to the maximum values computed in `export_data.py`.
+
+## How we reduced the full dataset
+The full file `datasprint_sample_data.parquet` has **305 million rows and 30 columns (17.5 GB)**. To work on the app, we narrowed it down with a single query (DuckDB, without loading the file into memory) to a dataset about Poznań:
+
+```sql
+SELECT pymt_crd_acct_num_raw, mrch_catg_nm, mrch_city_nm_raw, mrch_postal_code, mrch_ctry_nm,
+       mrch_nm_raw, issr_ctry_cd, prch_dt, prch_mnth_id, tran_id_gmt_tm, cs_tran_amt,
+       lau_enr, fua_enr, pstl_cd_enr
+FROM read_parquet('datasprint_sample_data.parquet')
+WHERE transaction_type = 'POS'
+  AND cp_flag = 1
+  AND (fua_enr = 'POZNAN' OR UPPER(TRIM(mrch_city_nm_raw)) LIKE '%POZNAN%')
+```
+
+**Row reduction** (`WHERE`):
+- `transaction_type = 'POS'`: only terminal payments (no ATM withdrawals).
+- `cp_flag = 1`: only payments with the physical card present (no online or remote payments).
+- `fua_enr = 'POZNAN'` **or** the merchant's city contains `POZNAN`: transactions by cards assigned to the Poznań urban area (wherever they paid) and all transactions at merchants in Poznań (including cards from outside Poznań, e.g. tourists).
+
+**Column reduction:** out of 30 columns we kept 14 (listed in the query). We left out, among others, the transaction ID, card segment, card entry mode, category code, merchant region and country code, card type, and payment channel.
+
+**Result:** about **64 million rows** (`poznan_dataset.parquet`, the full dataset used for publication). The file `poznan_dataset_mini.parquet` (12.97 million rows) is a smaller dataset for quick tests. Then `export_data.py` narrows the data to merchants in Poland with a valid postal code and aggregates them into the form described below.
+
+**Limitations of this approach:**
+- We include only in-person card payments at terminals: no ATMs, online or remote payments.
+- The city is matched by text (`POZNAN`), so records with an abbreviation or a typo (e.g. "Pozna", "Pozna?") may be missed. In addition, selecting by `fua_enr` includes all transactions of residents of the Poznań area, also those outside the city.
 
 ## Columns used by the export
 | Column | Usage |
